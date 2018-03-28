@@ -1,0 +1,26 @@
+env:
+  browser: true
+  es6: true
+  node: true
+globals:
+  describe: true
+  it: true
+extends: 'eslint:recommended'
+plugins: ['html']
+parserOptions:
+  sourceType: module
+  ecmaVersion: 8
+rules:
+  no-console: 0
+  indent:
+    - error
+    - 4
+  linebreak-style:
+    - error
+    - unix
+  quotes:
+    - error
+    - single
+  semi:
+    - error
+    - never
