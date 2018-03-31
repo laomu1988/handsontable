@@ -26,5 +26,8 @@
     "url-loader": "^1.0.1",
     "webpack": "^3.5.2",
     "webpack-dev-server": "^2.7.1"
+  },
+  "dependencies": {
+    "eslint": "^4.19.1"
   }
 }
