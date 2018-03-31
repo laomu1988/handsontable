@@ -1,0 +1,10 @@
+
+.handsontable .formula {
+    /* box-shadow: inset 0 0 0px 1px #ff0000;
+    box-sizing: border-box; */
+    background: #ff0;
+}
+
+.handsontable .error {
+    background: #f00;
+}

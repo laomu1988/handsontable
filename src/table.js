@@ -1,6 +1,7 @@
 /**
  * @file 表格编辑文件
  */
+require('./style.css')
 const _ = require('lodash')
 require('handsontable/dist/handsontable.full.min.css')
 var Handsontable = require('handsontable/dist/handsontable.full.min.js')
@@ -71,20 +72,22 @@ class TableEditor {
         this.formulaParser = parser;
     }
     getTableConfig() {
+        let me = this;
         // 渲染表格
         var defaultConfig = {
             rowHeaders: true,
             colHeaders: true,
             mergeCells: true,
             contextMenu: true,
+            cell: this.formulaFields,
             afterChange() {
                 console.log('afterChange:', this.renderData)
             },
             afterBeginEditing(rowIndex, colIndex) {
                 console.log('afterBeginEditing:', arguments)
-                if (originData[rowIndex] && originData[rowIndex][colIndex] && renderData[rowIndex][colIndex] !== originData[rowIndex][colIndex]) {
-                    table.setDataAtCell(rowIndex, colIndex, originData[rowIndex][colIndex]);
-                    console.log('setData:', originData[rowIndex][colIndex])
+                if (me.originData[rowIndex] && me.originData[rowIndex][colIndex] && me.renderData[rowIndex][colIndex] !== me.originData[rowIndex][colIndex]) {
+                    me.table.setDataAtCell(rowIndex, colIndex, me.originData[rowIndex][colIndex]);
+                    console.log('setData:', me.originData[rowIndex][colIndex])
                 }
             },
             afterSetDataAtCell(datas, action) {
@@ -95,7 +98,7 @@ class TableEditor {
                         let colIndex = info[1]
                         let oldData = info[2]
                         let newData = info[3]
-                        updateOriginCell(rowIndex, colIndex, newData)
+                        me.updateOriginCell(rowIndex, colIndex, newData)
                     })
                 }
             },
@@ -113,6 +116,7 @@ class TableEditor {
      * 更新渲染数据，将公式部分转化为计算后的值
      */
     updateRenderData() {
+        this.clearClassName()
         this.renderData.forEach((arr, rowIndex)=> {
             arr.forEach((value, colIndex) => {
                 if (value && value[0] === '=') {
@@ -136,6 +140,52 @@ class TableEditor {
         if (value && value[0] === '=') {
             this.parser(rowIndex, colIndex, value.substr(1))
         }
+        else {
+            this.clearCellClassName(rowIndex, colIndex)
+        }
+    }
+    // 清空所有已指定的className
+    clearClassName() {
+        this.formulaFields.forEach(d => {
+            let oldClassName = this.table.getCellMeta(d.row, d.col, 'className').className || '';
+            this.table && this.table.setCellMeta(d.row, d.col, 'className', oldClassName.replace(/formula/g, '').replace(/error/g, ''))
+            this.render()
+        })
+        this.formulaFields = []
+    }
+    clearCellClassName(row, col) {
+        let flag = -1;
+        let field = this.formulaFields.find((d,index) => {
+            flag = index
+            return d.row === row && d.col === col
+        })
+        if (field && this.table) {
+            let oldClassName = this.table.getCellMeta(row, col, 'className').className || '';
+            this.table.setCellMeta(row, col, 'className', oldClassName.replace(/formula/g, '').replace(/error/g, ''))
+            this.render()
+        }
+        this.formulaFields.splice(flag, 1)
+        console.log('formulaFields', this.formulaFields);
+    }
+    addCellClassName(row, col, className) {
+        if (this.table) {
+            let oldClassName = this.table.getCellMeta(row, col, 'className').className || '';
+            if (oldClassName) {
+                oldClassName = oldClassName.replace(/formula/g, '').replace(/error/g, '')
+            }
+            this.table.setCellMeta(row, col, 'className', oldClassName + ' ' + className)
+            this.render()
+        }
+        let field = this.formulaFields.find(d => {
+            return d.row === row && d.col === col
+        })
+        if (field) {
+            field.className = className;
+        }
+        else {
+            this.formulaFields.push({row, col, className: className});
+        }
+        console.log('formulaFields:', this.formulaFields)
     }
     parser(rowIndex, colIndex, formula) {
         console.log('formual:', formula)
@@ -149,10 +199,22 @@ class TableEditor {
             else {
                 this.renderData[rowIndex][colIndex] = result.result
             }
+            this.addCellClassName(rowIndex, colIndex, 'formula')
         }
         else {
+            this.addCellClassName(rowIndex, colIndex, 'error')
             console.error('formualParserError:', formula, result.error)
         }
+    }
+    render() {
+        if (this._isRender) {
+            return;
+        }
+        this._isRender = true
+        setTimeout(() => {
+            this.table && this.table.render()
+            this._isRender = false
+        }, 50)
     }
 }
 
