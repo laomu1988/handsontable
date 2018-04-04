@@ -8,3 +8,8 @@
 .handsontable .error {
     background: #f00;
 }
+
+/* 自选对象 */
+.handsontable .selected {
+    background: #0e0;
+}

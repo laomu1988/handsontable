@@ -2,10 +2,11 @@
   "name": "@laomu/handsontable",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/common.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "cross-env NODE_ENV=dev webpack-dev-server",
+    "build": "rimraf dest/assets && cross-env NODE_ENV=dev webpack",
     "prod": "rimraf dest/assets && cross-env NODE_ENV=prod webpack"
   },
   "author": "",

@@ -46,9 +46,10 @@ class TableEditor {
         });
 
         parser.on('callCellValue', (cellCoord, done) => {
-            console.log('callCellValue:', arguments)
             let row = this.originData[cellCoord.row.index]
-            done(row[cellCoord.column.index])
+            let data = row ? row[cellCoord.column.index] : null
+            console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, arguments)
+            done(data)
         });
 
         parser.on('callRangeValue', (startCellCoord, endCellCoord, done) => {
@@ -83,22 +84,22 @@ class TableEditor {
             afterChange() {
                 console.log('afterChange:', this.renderData)
             },
-            afterBeginEditing(rowIndex, colIndex) {
+            afterBeginEditing(row, col) {
                 console.log('afterBeginEditing:', arguments)
-                if (me.originData[rowIndex] && me.originData[rowIndex][colIndex] && me.renderData[rowIndex][colIndex] !== me.originData[rowIndex][colIndex]) {
-                    me.table.setDataAtCell(rowIndex, colIndex, me.originData[rowIndex][colIndex]);
-                    console.log('setData:', me.originData[rowIndex][colIndex])
+                if (me.originData[row] && me.originData[row][col] && me.renderData[row][col] !== me.originData[row][col]) {
+                    me.table.setDataAtCell(row, col, me.originData[row][col]);
+                    console.log('setData:', me.originData[row][col])
                 }
             },
             afterSetDataAtCell(datas, action) {
                 console.log('afterSetDataAtCell:', arguments)
                 if (action && datas.length > 0) {
                     datas.forEach(info => {
-                        let rowIndex = info[0]
-                        let colIndex = info[1]
+                        let row = info[0]
+                        let col = info[1]
                         let oldData = info[2]
                         let newData = info[3]
-                        me.updateOriginCell(rowIndex, colIndex, newData)
+                        me.updateOriginCell(row, col, newData)
                     })
                 }
             },
@@ -117,10 +118,17 @@ class TableEditor {
      */
     updateRenderData() {
         this.clearClassName()
-        this.renderData.forEach((arr, rowIndex)=> {
-            arr.forEach((value, colIndex) => {
+        this.originData.forEach((arr, row)=> {
+            arr.forEach((value, col) => {
                 if (value && value[0] === '=') {
-                    this.parser(rowIndex, colIndex, value.substr(1))
+                    this.parser(row, col, value.substr(1))
+                }
+                else if (value + '' === '[object Object]') {
+                    this.renderData[row][col] = value.name || value.text
+                    this.addCellClassName(row, col, 'selected')
+                    if (this.table) {
+                        this.table.setDataAtCell(row, col, value.name || value.text)
+                    }
                 }
             })
         })
@@ -128,20 +136,20 @@ class TableEditor {
     /**
      * 更新原始数据，编辑、合并单元格、删除等等操作
      */
-    updateOriginCell(rowIndex, colIndex, value) {
-        while(this.originData.length <= rowIndex) {
+    updateOriginCell(row, col, value) {
+        while(this.originData.length <= row) {
             this.originData.push([''])
         }
-        let row = this.originData[rowIndex]
-        while(row.length <= colIndex) {
-            row.push('')
+        let rowData = this.originData[row]
+        while(rowData.length <= col) {
+            rowData.push('')
         }
-        row[colIndex] = value
+        rowData[col] = value
         if (value && value[0] === '=') {
-            this.parser(rowIndex, colIndex, value.substr(1))
+            this.parser(row, col, value.substr(1))
         }
         else {
-            this.clearCellClassName(rowIndex, colIndex)
+            this.clearCellClassName(row, col)
         }
     }
     // 清空所有已指定的className
@@ -187,22 +195,48 @@ class TableEditor {
         }
         console.log('formulaFields:', this.formulaFields)
     }
-    parser(rowIndex, colIndex, formula) {
+    // 转换自选数据，例如E2.value
+    parserFormulaSelected(formual) {
+        return formual.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, (all, col, row, attr) => {
+            col = this.getColByChar(col)
+            row = parseInt(row, 10) - 1
+            let rowData = this.originData[row]
+            if (rowData) {
+                console.log('rowData:', rowData)
+                let data = rowData[col]
+                return data[attr] || 0
+            }
+            return 0
+        })
+    }
+    getColByChar(colChar) {
+        let codeA = 'A'.charCodeAt(0) - 1
+        let value = 0
+        if (colChar.length === 1) {
+            return colChar.charCodeAt(0) - codeA - 1
+        }
+        let array = colChar.split('').reverse().forEach((char, index) => {
+            value += (char.charCodeAt(0) - codeA) * Math.pow(26, index)
+        })
+        return value - 1
+    }
+    parser(row, col, formula) {
         console.log('formual:', formula)
+        formula = this.parserFormulaSelected(formula)
         let result = this.formulaParser.parse(formula)
         if (!result.error) {
             if (this.table) {
                 setTimeout(() => {
-                    this.table.setDataAtCell(rowIndex, colIndex, result.result)
+                    this.table.setDataAtCell(row, col, result.result)
                 }, 10)
             }
             else {
-                this.renderData[rowIndex][colIndex] = result.result
+                this.renderData[row][col] = result.result
             }
-            this.addCellClassName(rowIndex, colIndex, 'formula')
+            this.addCellClassName(row, col, 'formula')
         }
         else {
-            this.addCellClassName(rowIndex, colIndex, 'error')
+            this.addCellClassName(row, col, 'error')
             console.error('formualParserError:', formula, result.error)
         }
     }
@@ -215,6 +249,9 @@ class TableEditor {
             this.table && this.table.render()
             this._isRender = false
         }, 50)
+    }
+    getData() {
+        return this.originData
     }
 }
 

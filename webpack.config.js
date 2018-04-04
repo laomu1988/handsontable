@@ -10,6 +10,8 @@ const hash = env === 'prod' ? '.[hash]' : ''
 const UglifyJSPlugin = require('uglifyjs-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 
+console.log('isProd:', isProd)
+
 const plugins = [
     new HtmlWebpackPlugin({
         template: './src/index.ejs',
@@ -27,7 +29,7 @@ if (isProd) {
 }
 
 module.exports = {
-    devtool: 'inline-source-map',
+    devtool: 'source-map',
     entry: {
         table: './src/table.js',
         example: './src/example.js',
