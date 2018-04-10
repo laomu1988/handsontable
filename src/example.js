@@ -11,4 +11,17 @@ var hot = new Tabel({
     dom: container,
     data: data
 })
+
+// 需要选择数据时触发
+hot.on('select-object', function(row, col, data) {
+    console.log('select:', row, col, data);
+    setTimeout(() => {
+        let value = data.value
+        hot.setDataAtCell(row, col, {
+            name: 'selected:' + (value + 1),
+            value: (value + 1)
+        })
+    }, 1000)
+});
+
 window.hot = hot

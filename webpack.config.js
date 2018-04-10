@@ -8,21 +8,21 @@ const env = process.env.NODE_ENV || 'dev'
 const isProd = env === 'prod'
 const hash = env === 'prod' ? '.[hash]' : ''
 const UglifyJSPlugin = require('uglifyjs-webpack-plugin')
-const HtmlWebpackPlugin = require('html-webpack-plugin')
+// const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 console.log('isProd:', isProd)
 
 const plugins = [
-    new HtmlWebpackPlugin({
-        template: './src/index.ejs',
-        filename: 'index.html',
-        chunks: ['common', 'table', 'example']
-    }),
-    new webpack.optimize.CommonsChunkPlugin({
-        name: 'common',
-        chunks: ['table', 'example'],
-        filename: 'common.js',
-    })
+    // new HtmlWebpackPlugin({
+    //     template: './src/index.ejs',
+    //     filename: 'index.html',
+    //     chunks: ['common', 'table', 'example']
+    // }),
+    // new webpack.optimize.CommonsChunkPlugin({
+    //     name: 'common',
+    //     chunks: ['table', 'example'],
+    //     filename: 'common.js',
+    // })
 ]
 if (isProd) {
     plugins.unshift(new UglifyJSPlugin())

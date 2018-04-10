@@ -1,13 +1,12 @@
 {
   "name": "@laomu/handsontable",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.2",
+  "description": "handsontable with formula",
   "main": "dist/common.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "cross-env NODE_ENV=dev webpack-dev-server",
-    "build": "rimraf dest/assets && cross-env NODE_ENV=dev webpack",
-    "prod": "rimraf dest/assets && cross-env NODE_ENV=prod webpack"
+    "build": "cp -f src/*.css dist && babel src --out-dir dist --ignore src/index.js"
   },
   "author": "",
   "license": "MIT",
@@ -19,8 +18,6 @@
     "babel-preset-es2015": "^6.24.1",
     "cross-env": "^5.1.4",
     "css-loader": "^0.28.10",
-    "handsontable": "^0.38.1",
-    "hot-formula-parser": "^2.3.3",
     "html-webpack-plugin": "^3.0.6",
     "style-loader": "^0.20.3",
     "uglifyjs-webpack-plugin": "^0.4.6",
@@ -29,6 +26,8 @@
     "webpack-dev-server": "^2.7.1"
   },
   "dependencies": {
+    "handsontable": "^0.38.1",
+    "hot-formula-parser": "^2.3.3",
     "eslint": "^4.19.1"
   }
 }
