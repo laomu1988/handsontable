@@ -110,7 +110,7 @@ class TableEditor extends EventEmitter {
             afterBeginEditing: this.onBeginEditing.bind(this),
             afterSelectionEnd(row, col, endRow, endCol) {
                 if (row === endRow && col === endCol) {
-                    console.log('afterSelectionEnd:', arguments)
+                    // console.log('afterSelectionEnd:', arguments)
                     me.onSelectedCell(row, col)
                 }
             },
@@ -153,7 +153,6 @@ class TableEditor extends EventEmitter {
     // 更新单元格的属性
     updateCellMeta(row, col) {
         let value = this.originData[row][col]
-        this.renderData[row][col] = value
         let changed = false
         let meta = {
             row,
@@ -164,13 +163,13 @@ class TableEditor extends EventEmitter {
         if (value && value[0] === '=') {
             let result = this.parser(row, col, value.substr(1))
             meta.className = result.error ? 'error' : 'formula'
-            this.renderData[row][col] = result.error ? value : result.result
+            value = result.error ? value : result.result
             console.log('parser:', value, result)
         }
         else if(value && value + '' === '[object Object]') {
             meta.className = 'object'
             meta.readOnly = true
-            this.renderData[row][col] = value.name || value.text
+            value = value.name || value.text
         }
         let index = this.cells.findIndex(v => v.row === row && v.col === col);
         if (index >= 0) {
@@ -180,10 +179,17 @@ class TableEditor extends EventEmitter {
             this.cells.push(meta)
         }
 
+        console.log('setRenderData:', row, col, value)
         if (this.table) {
-            this.table.setDataAtCell(row, col, this.renderData[row][col])
-            this.table.setCellMetaObject(row, col, meta)
-            this.render()
+            // 设置表的数据需要延迟
+            setTimeout(() => {
+                this.table.setCellMetaObject(row, col, meta)
+                this.table.setDataAtCell(row, col, value)
+                this.render()
+            }, 100)
+        }
+        else {
+            this.renderData[row][col] = value
         }
     }
     clearCellClassName(row, col) {
@@ -222,6 +228,7 @@ class TableEditor extends EventEmitter {
         }
         this._isRender = true
         setTimeout(() => {
+            console.log('render')
             this.table && this.table.render()
             this._isRender = false
         }, 50)

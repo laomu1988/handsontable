@@ -31,7 +31,6 @@ if (isProd) {
 module.exports = {
     devtool: 'source-map',
     entry: {
-        table: './src/table.js',
         example: './src/example.js',
         // vendor: ['./src/index.js']
     },

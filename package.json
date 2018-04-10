@@ -1,12 +1,13 @@
 {
   "name": "@laomu/handsontable",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "handsontable with formula",
   "main": "dist/common.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "cross-env NODE_ENV=dev webpack-dev-server",
-    "build": "cp -f src/*.css dist && babel src --out-dir dist --ignore src/index.js"
+    "dev": "webpack --watch",
+    "webpack": "cross-env NODE_ENV=dev webpack",
+    "build": "cp -f src/*.css dist && babel src/table.js --out-dir dist --ignore src/index.js"
   },
   "author": "",
   "license": "MIT",
