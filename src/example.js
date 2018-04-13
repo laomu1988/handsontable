@@ -1,3 +1,4 @@
+require('./style.less')
 const Tabel = require('./table.js')
 var data = [
     ['', 'Ford', 'Tesla', 'Toyota', 'Honda'],

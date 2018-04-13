@@ -2,12 +2,12 @@
   "name": "@laomu/handsontable",
   "version": "1.0.3",
   "description": "handsontable with formula",
-  "main": "dist/common.js",
+  "main": "dist/table.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "webpack --watch",
     "webpack": "cross-env NODE_ENV=dev webpack",
-    "build": "cp -f src/*.css dist && babel src/table.js --out-dir dist --ignore src/index.js"
+    "build": "lessc src/style.less dist/style.css && babel src/table.js --out-file dist/table.js --ignore src/index.js"
   },
   "author": "",
   "license": "MIT",
@@ -20,6 +20,8 @@
     "cross-env": "^5.1.4",
     "css-loader": "^0.28.10",
     "html-webpack-plugin": "^3.0.6",
+    "less-loader": "^4.1.0",
+    "lodash": "^4.17.5",
     "style-loader": "^0.20.3",
     "uglifyjs-webpack-plugin": "^0.4.6",
     "url-loader": "^1.0.1",

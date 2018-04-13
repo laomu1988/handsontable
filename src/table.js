@@ -2,9 +2,6 @@
  * @file 表格编辑文件
  */
 var EventEmitter = require('eventemitter3');
-require('./style.css')
-const _ = require('lodash')
-require('handsontable/dist/handsontable.full.min.css')
 var Handsontable = require('handsontable/dist/handsontable.full.min.js')
 var FormulaParser = require('hot-formula-parser').Parser
 /**
@@ -18,7 +15,7 @@ class TableEditor extends EventEmitter {
     constructor(options) {
         super();
         this.originData = options.data
-        this.renderData = _.cloneDeep(this.originData)
+        this.renderData = []
         this.options = options
         this.dom = options.dom
         this.formulaParser = null // 公式计算实例
@@ -27,12 +24,26 @@ class TableEditor extends EventEmitter {
         this.errorFields = []
         this.createFormulaParser()
         this.originData.forEach((arr, row)=> {
+            this.renderData.push([])
             arr.forEach((value, col) => {
                 this.updateCellMeta(row, col)
             })
         })
         console.log('this.cells:', this.cells)
         this.createTable()
+        this.dom.addEventListener('dblclick', this.onDblclick.bind(this), false)
+    }
+    onDblclick(e) {
+        let target = e.target || {}
+        if (target.tagName === 'TD') {
+            let col = target.cellIndex - 1
+            let row = target.parentElement.rowIndex -1
+            let data = this.originData[row][col]
+            this.emit('dblclick', row, col, data)
+            if (this.isObject(data)) {
+                this.emit('dblclick-object', row, col, data)
+            }
+        }
     }
     createFormulaParser() {
         var parser = new FormulaParser()
@@ -73,6 +84,9 @@ class TableEditor extends EventEmitter {
             }
         });
         this.formulaParser = parser;
+    }
+    isObject(data) {
+        return typeof data === 'object' && data + '' === '[object Object]'
     }
     onBeginEditing(row, col) {
         console.log('afterBeginEditing:', arguments)
