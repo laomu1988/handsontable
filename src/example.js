@@ -1,16 +1,25 @@
 require('./style.less')
 const Tabel = require('./table.js')
 var data = [
-    ['', 'Ford', 'Tesla', 'Toyota', 'Honda'],
-    ['2017', 10, 11, 12, {name: '数据{value: 123}', value: 123}],
-    ['2018', 20, 11, 14, 13],
-    ['2019', 30, '=B1+B2', '=A2+B2', '=E2.value+1']
+    ['说明', '内容', '内容'],
+    ['数据', 10, 11],
+    ['字符串', 'AAA', ''],
+    ['对象', {name: '对象A', value: 123}, {name: '对象B', value: 133}],
+    ['公式', '=B2+C2'],
+    ['错误示例', '=B1+B2'],
+    ['对象属性计算', '=B4.value'],
+    ['别名计算示例', '=B4.值'],
+    ['不存在的属性', '=B4.notExist'],
 ]
 
 var container = document.getElementById('table')
 var hot = new Tabel({
     dom: container,
-    data: data
+    data: data,
+    // 属性别名
+    propAlias: {
+        'value': '值'
+    }
 })
 
 // 需要选择数据时触发

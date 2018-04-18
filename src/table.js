@@ -9,7 +9,8 @@ var FormulaParser = require('hot-formula-parser').Parser
  * @param {Object} options 
  * @param {DOM} options.dom 编辑区所在dom
  * @param {Array} options.data 编辑区使用的数据
- * @param {Object} options.config 覆盖默认配置
+ * @param {Object} options.config 覆盖handsontable默认配置
+ * @param {Object} options.disabled 是否禁止编辑，默认false
  */
 class TableEditor extends EventEmitter {
     constructor(options) {
@@ -23,6 +24,13 @@ class TableEditor extends EventEmitter {
         this.cells = []
         this.errorFields = []
         this.createFormulaParser()
+        if (this.options.propAlias) {
+            let alias = this.options.propAlias
+            this.alias = {}
+            for(let attr in alias) {
+                this.alias[alias[attr]] = attr
+            }
+        }
         this.originData.forEach((arr, row)=> {
             this.renderData.push([])
             arr.forEach((value, col) => {
@@ -38,7 +46,7 @@ class TableEditor extends EventEmitter {
         if (target.tagName === 'TD') {
             let col = target.cellIndex - 1
             let row = target.parentElement.rowIndex -1
-            let data = this.originData[row][col]
+            let data = this.originData[row] ? this.originData[row][col] : null
             this.emit('dblclick', row, col, data)
             if (this.isObject(data)) {
                 this.emit('dblclick-object', row, col, data)
@@ -118,6 +126,7 @@ class TableEditor extends EventEmitter {
             mergeCells: true,
             contextMenu: true,
             cell: this.cells,
+            comments: true, // 展示注释
             afterChange() {
                 console.log('afterChange:', this.renderData)
             },
@@ -147,6 +156,15 @@ class TableEditor extends EventEmitter {
         }
         let config = Object.assign({}, defaultConfig, this.options.config, {data: this.renderData})
         this.table = new Handsontable(this.dom, config)
+        if (this.options.disabled) {
+            this.table.updateSettings({
+                cells: function (row, col, prop) {
+                    return {
+                        editor: false
+                    }
+                }
+            })
+        }
     }
     /**
      * 更新原始数据，编辑、合并单元格、删除等等操作
@@ -183,6 +201,7 @@ class TableEditor extends EventEmitter {
         else if(value && value + '' === '[object Object]') {
             meta.className = 'object'
             meta.readOnly = true
+            meta.comment = {value: '测试注释'}
             value = value.name || value.text
         }
         let index = this.cells.findIndex(v => v.row === row && v.col === col);
@@ -207,7 +226,7 @@ class TableEditor extends EventEmitter {
         }
     }
     clearCellClassName(row, col) {
-        this.table.setCellMetaObject(row, col, {className: '', readOnly: false})
+        this.table.setCellMetaObject(row, col, {className: '', readOnly: false, comment: null})
         this.render()
         let flag = -1;
         let index = this.cells.findIndex(d => d.row === row && d.col === col)
@@ -218,8 +237,14 @@ class TableEditor extends EventEmitter {
     }
     // 计算公式的值
     parser(row, col, formula) {
-        console.log('formual:', row, col, formula)
-
+        let alias = this.alias
+        if (alias) {
+            formula = formula.replace(/[^\.\s\+\-\*\/\(\)]+/g, function(word) {
+                console.log('word', word)
+                return alias[word] || word
+            })
+        }
+        // console.log('formula:', formula)
         // 转换对象数据属性，例如E2.value
         formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, (all, col, row, attr) => {
             col = getColByColName(col)
