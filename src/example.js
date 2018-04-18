@@ -4,7 +4,7 @@ var data = [
     ['说明', '内容', '内容'],
     ['数据', 10, 11],
     ['字符串', 'AAA', ''],
-    ['对象', {name: '对象A', value: 123}, {name: '对象B', value: 133}],
+    ['对象', {name: '对象A', value: 123, hide: false}, {name: '对象B', value: 133}],
     ['公式', '=B2+C2'],
     ['错误示例', '=B1+B2'],
     ['对象属性计算', '=B4.value'],
@@ -23,12 +23,12 @@ var hot = new Tabel({
 })
 
 // 需要选择数据时触发
-hot.on('select-object', function(row, col, data) {
+hot.on('dblclick-object', function(row, col, data) {
     console.log('select:', row, col, data);
     setTimeout(() => {
         let value = data.value
         hot.setDataAtCell(row, col, {
-            name: 'selected:' + (value + 1),
+            name: '值:' + (value + 1),
             value: (value + 1)
         })
     }, 1000)

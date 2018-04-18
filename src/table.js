@@ -16,12 +16,10 @@ class TableEditor extends EventEmitter {
     constructor(options) {
         super();
         this.originData = options.data
-        this.renderData = []
         this.options = options
         this.dom = options.dom
         this.formulaParser = null // 公式计算实例
         this.table = null // hansontable编辑实例
-        this.cells = []
         this.errorFields = []
         this.createFormulaParser()
         if (this.options.propAlias) {
@@ -31,13 +29,6 @@ class TableEditor extends EventEmitter {
                 this.alias[alias[attr]] = attr
             }
         }
-        this.originData.forEach((arr, row)=> {
-            this.renderData.push([])
-            arr.forEach((value, col) => {
-                this.updateCellMeta(row, col)
-            })
-        })
-        console.log('this.cells:', this.cells)
         this.createTable()
         this.dom.addEventListener('dblclick', this.onDblclick.bind(this), false)
     }
@@ -48,7 +39,7 @@ class TableEditor extends EventEmitter {
             let row = target.parentElement.rowIndex -1
             let data = this.originData[row] ? this.originData[row][col] : null
             this.emit('dblclick', row, col, data)
-            if (this.isObject(data)) {
+            if (isObject(data)) {
                 this.emit('dblclick-object', row, col, data)
             }
         }
@@ -93,30 +84,6 @@ class TableEditor extends EventEmitter {
         });
         this.formulaParser = parser;
     }
-    isObject(data) {
-        return typeof data === 'object' && data + '' === '[object Object]'
-    }
-    onBeginEditing(row, col) {
-        console.log('afterBeginEditing:', arguments)
-        if (this.originData[row] && this.originData[row][col] && this.renderData[row][col] !== this.originData[row][col]) {
-            let data = this.originData[row][col];
-            if (typeof data === 'object' && data + '' === '[object Object]') {
-                this.emit('select-object', row, col, data); // 触发可选择对象事件
-            }
-            else {
-                this.table.setDataAtCell(row, col, this.originData[row][col]);
-                console.log('setData:', this.originData[row][col])
-            }
-        }
-    }
-    onSelectedCell(row, col) {
-        console.log('onSelectedCell', row, col);
-        let data = this.originData[row] ? this.originData[row][col] : null
-        this.emit('select-cell', row, col, data)
-        if (typeof data === 'object' && data + '' === '[object Object]') {
-            this.emit('select-object', row, col, data); // 触发可选择对象事件
-        }
-    }
     createTable() {
         let me = this;
         // 渲染表格
@@ -125,36 +92,16 @@ class TableEditor extends EventEmitter {
             colHeaders: true,
             mergeCells: true,
             contextMenu: true,
-            cell: this.cells,
+            cells: this.getCellProp.bind(me), // this.cells,
             comments: true, // 展示注释
             afterChange() {
-                console.log('afterChange:', this.renderData)
-            },
-            afterBeginEditing: this.onBeginEditing.bind(this),
-            afterSelectionEnd(row, col, endRow, endCol) {
-                if (row === endRow && col === endCol) {
-                    // console.log('afterSelectionEnd:', arguments)
-                    me.onSelectedCell(row, col)
-                }
-            },
-            afterSetDataAtCell(datas, action) {
-                console.log('afterSetDataAtCell:', arguments)
-                if (action && datas.length > 0) {
-                    datas.forEach(info => {
-                        let row = info[0]
-                        let col = info[1]
-                        let oldData = info[2]
-                        let newData = info[3]
-                        me.setDataAtCell(row, col, newData)
-                    })
-                }
-            },
-            afterSetCellMeta: function (row, col, key, val) {
-                console.log("cell meta changed", row, col, key, val);
+                console.log('afterChange:', me.originData)
+                me.emit('change', me.originData)
+                me.emit('update', me.originData)
             },
             minSpareRows: 1
         }
-        let config = Object.assign({}, defaultConfig, this.options.config, {data: this.renderData})
+        let config = Object.assign({}, defaultConfig, this.options.config, {data: this.originData})
         this.table = new Handsontable(this.dom, config)
         if (this.options.disabled) {
             this.table.updateSettings({
@@ -166,77 +113,67 @@ class TableEditor extends EventEmitter {
             })
         }
     }
-    /**
-     * 更新原始数据，编辑、合并单元格、删除等等操作
-     */
+    // 设置单元格数据
     setDataAtCell(row, col, value) {
-        console.log('setDataAtCell:', row, col, value)
-        while(this.originData.length <= row) {
-            this.originData.push([''])
-        }
-        let rowData = this.originData[row]
-        while(rowData.length <= col) {
-            rowData.push('')
-        }
-        rowData[col] = value
-        this.updateCellMeta(row, col)
-        this.emit('update', this.originData)
+        this.table.setDataAtCell(row, col, value)
     }
-    // 更新单元格的属性
-    updateCellMeta(row, col) {
-        let value = this.originData[row][col]
-        let changed = false
-        let meta = {
-            row,
-            col,
-            className: '',
-            readOnly: false
+    // 取得对象注释数据
+    getObjectComment(obj) {
+        let aliasShow = []
+        let show = []
+        let alias = this.options.propAlias
+        for(let attr in obj) {
+            if (alias[attr]) {
+                aliasShow.push(alias[attr] + '(' + attr + '): ' + obj[attr])
+            }
+            else {
+                show.push(attr + ': ' + obj[attr])
+            }
         }
-        if (value && value[0] === '=') {
-            let result = this.parser(row, col, value.substr(1))
-            meta.className = result.error ? 'error' : 'formula'
-            value = result.error ? value : result.result
-            console.log('parser:', value, result)
-        }
-        else if(value && value + '' === '[object Object]') {
-            meta.className = 'object'
-            meta.readOnly = true
-            meta.comment = {value: '测试注释'}
-            value = value.name || value.text
-        }
-        let index = this.cells.findIndex(v => v.row === row && v.col === col);
-        if (index >= 0) {
-            this.cells.splice(index, 1)
-        }
-        if (meta.className || meta.readOnly) {
-            this.cells.push(meta)
-        }
-
-        console.log('setRenderData:', row, col, value)
-        if (this.table) {
-            // 设置表的数据需要延迟
-            setTimeout(() => {
-                this.table.setCellMetaObject(row, col, meta)
-                this.table.setDataAtCell(row, col, value)
-                this.render()
-            }, 100)
-        }
-        else {
-            this.renderData[row][col] = value
-        }
+        return aliasShow.concat(show).join('\n')
     }
-    clearCellClassName(row, col) {
-        this.table.setCellMetaObject(row, col, {className: '', readOnly: false, comment: null})
-        this.render()
-        let flag = -1;
-        let index = this.cells.findIndex(d => d.row === row && d.col === col)
-        if (index > 0) {
-            this.cells.splice(flag, 1)
+    getCellProp(row, col, prop) {
+        // console.log('getCellProp', row, col)
+        let cellMeta = {
+            renderer: this.cellRender.bind(this)
         }
-        console.log('cells', this.cells);
+        let data = this.originData[row] ? this.originData[row][col] : null
+        if (isObject(data)) {
+            cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(data)}
+            cellMeta.readOnly = true
+        }
+        else if (data && data[0] === '=') {
+            cellMeta.comment = {value: data}
+        }
+        return cellMeta
+    }
+    cellRender(instance, td, row, col, prop, value, cellProperties) {
+        console.log('cellRender')
+        Handsontable.renderers.TextRenderer.apply(this, arguments);
+        let data = this.originData[row] ? this.originData[row][col] : null
+        let className = null
+        let showValue = null
+        if (isObject(data)) {
+            className = 'object'
+            showValue = data.name
+        }
+        else if (data && data[0] === '=') {
+            let result = this.parser(data.substr(1))
+            className = result.error ? 'error' : 'formula'
+            showValue = result.error ? data : result.result
+            console.log('parser:', data, result)
+        }
+        if (className) {
+            td.classList.add(className)
+        }
+        if (showValue !== null) {
+            console.log('showValue', showValue)
+            td.innerHTML = showValue
+        }
+        return td
     }
     // 计算公式的值
-    parser(row, col, formula) {
+    parser(formula) {
         let alias = this.alias
         if (alias) {
             formula = formula.replace(/[^\.\s\+\-\*\/\(\)]+/g, function(word) {
@@ -244,36 +181,46 @@ class TableEditor extends EventEmitter {
                 return alias[word] || word
             })
         }
-        // console.log('formula:', formula)
-        // 转换对象数据属性，例如E2.value
-        formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, (all, col, row, attr) => {
-            col = getColByColName(col)
-            row = parseInt(row, 10) - 1
-            let rowData = this.originData[row]
-            if (rowData) {
-                console.log('rowData:', rowData)
-                let data = rowData[col]
-                return data[attr] || 0
-            }
-            return 0
-        })
+        try {
+            // console.log('formula:', formula)
+            // 转换对象数据属性，例如E2.value
+            formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, (all, col, row, attr) => {
+                col = getColByColName(col)
+                row = parseInt(row, 10) - 1
+                let rowData = this.originData[row]
+                if (rowData) {
+                    console.log('rowData:', rowData)
+                    let data = rowData[col]
+                    return data[attr] || 0
+                }
+                return 0
+            })
+        }
+        catch(error) {
+            return {error}
+        }
 
         // 使用公式计算出结果
         return this.formulaParser.parse(formula)
     }
-    render() {
-        if (this._isRender) {
-            return;
-        }
-        this._isRender = true
-        setTimeout(() => {
-            console.log('render')
-            this.table && this.table.render()
-            this._isRender = false
-        }, 50)
-    }
     getData() {
         return this.originData
+    }
+    // 取得单元格原始数据
+    getCellOrigin(row, col) {
+        return this.originData[row] ? this.originData[row][col] : null
+    }
+    // 取得单元格计算后数据
+    getCellData(row, col) {
+        let data = this.originData[row] ? this.originData[row][col] : null
+        if (data && data[0] === '=') {
+            let result = this.parser(data.slice(1))
+            if (!result.error) {
+                return result.result
+            }
+            return data
+        }
+        return data
     }
 }
 
@@ -291,6 +238,21 @@ function getColByColName(name) {
         value += (char.charCodeAt(0) - codeA) * Math.pow(26, index)
     })
     return value - 1
+}
+const charArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+function getCellName(row, col) {
+    let colName = ''
+    while(col >= 26) {
+        let number = col % 26
+        colName = charArray[number] + colName
+        col = parseInt((col - number) / 26, 10) - 1
+    }
+    colName = charArray[col] + colName
+    return colName + (row + 1)
+}
+
+function isObject(data) {
+    return typeof data === 'object' && data + '' === '[object Object]'
 }
 
 module.exports = TableEditor
