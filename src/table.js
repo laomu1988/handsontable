@@ -59,6 +59,21 @@ class TableEditor extends EventEmitter {
         this.table = null // hansontable编辑实例
         this.errorFields = []
         this.createFormulaParser()
+
+        // 转换object对象为字符串
+        if (this.originData && this.originData.length > 0) {
+            this.originData = this.originData.map(row => {
+                if (row && row.length > 0 && row.map) {
+                    return row.map(value => {
+                        if (isObject(value)) {
+                            return new String(JSON.stringify(value))
+                        }
+                        return value
+                    })
+                }
+                return []
+            })
+        }
         if (this.options.propAlias) {
             let alias = this.options.propAlias
             this.alias = {}
@@ -76,8 +91,8 @@ class TableEditor extends EventEmitter {
             let row = target.parentElement.rowIndex -1
             let data = this.originData[row] ? this.originData[row][col] : null
             this.emit('dblclick', row, col, data)
-            if (isObject(data)) {
-                this.emit('dblclick-object', row, col, data)
+            if (data && data[0] === '{') {
+                this.emit('dblclick-object', row, col, data.origin || JSON.parse(data))
             }
         }
     }
@@ -157,6 +172,9 @@ class TableEditor extends EventEmitter {
     }
     // 设置单元格数据
     setDataAtCell(row, col, value) {
+        if (isObject(value)) {
+            value = JSON.stringify(value)
+        }
         this.table.setDataAtCell(row, col, value)
     }
     // 取得对象注释数据
@@ -183,9 +201,16 @@ class TableEditor extends EventEmitter {
             cellMeta.editor = false
         }
         let data = this.originData[row] ? this.originData[row][col] : null
-        if (isObject(data)) {
-            cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(data)}
-            cellMeta.readOnly = true
+        if(data && data[0] === '{') {
+            try {
+                let d = data.origin || JSON.parse(data)
+                data.origin = d;
+                cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
+                cellMeta.readOnly = true
+            }
+            catch(err) {
+                console.log('JSON.prase Error', data, err)
+            }
         }
         else if (data && data[0] === '=') {
             cellMeta.comment = {value: data}
@@ -198,9 +223,16 @@ class TableEditor extends EventEmitter {
         let data = this.originData[row] ? this.originData[row][col] : null
         let className = null
         let showValue = null
-        if (isObject(data)) {
-            className = 'object'
-            showValue = data.name
+        if(data && data[0] === '{') {
+            try {
+                let d = data.origin || JSON.parse(data)
+                data.origin = d;
+                className = 'object'
+                showValue = d.name
+            }
+            catch(err) {
+                console.log('JSON.prase Error', data, err)
+            }
         }
         else if (data && data[0] === '=') {
             let result = this.parser(data.substr(1))
@@ -265,6 +297,14 @@ class TableEditor extends EventEmitter {
             }
             return data
         }
+        else if(data && data[0] === '{') {
+            try {
+                return JSON.parse(data)
+            }
+            catch(err) {
+                console.error('JSON.parse Error', err)
+            }
+        }
         return data
     }
 }
@@ -297,7 +337,7 @@ function getCellName(row, col) {
 }
 
 function isObject(data) {
-    return typeof data === 'object' && data + '' === '[object Object]'
+    return data && typeof data === 'object' && data + '' === '[object Object]'
 }
 
 module.exports = TableEditor

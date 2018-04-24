@@ -74,6 +74,21 @@ var TableEditor = function (_EventEmitter) {
         _this.table = null; // hansontable编辑实例
         _this.errorFields = [];
         _this.createFormulaParser();
+
+        // 转换object对象为字符串
+        if (_this.originData && _this.originData.length > 0) {
+            _this.originData = _this.originData.map(function (row) {
+                if (row && row.length > 0 && row.map) {
+                    return row.map(function (value) {
+                        if (isObject(value)) {
+                            return new String(JSON.stringify(value));
+                        }
+                        return value;
+                    });
+                }
+                return [];
+            });
+        }
         if (_this.options.propAlias) {
             var alias = _this.options.propAlias;
             _this.alias = {};
@@ -95,8 +110,8 @@ var TableEditor = function (_EventEmitter) {
                 var row = target.parentElement.rowIndex - 1;
                 var data = this.originData[row] ? this.originData[row][col] : null;
                 this.emit('dblclick', row, col, data);
-                if (isObject(data)) {
-                    this.emit('dblclick-object', row, col, data);
+                if (data && data[0] === '{') {
+                    this.emit('dblclick-object', row, col, data.origin || JSON.parse(data));
                 }
             }
         }
@@ -187,6 +202,9 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'setDataAtCell',
         value: function setDataAtCell(row, col, value) {
+            if (isObject(value)) {
+                value = JSON.stringify(value);
+            }
             this.table.setDataAtCell(row, col, value);
         }
         // 取得对象注释数据
@@ -217,9 +235,15 @@ var TableEditor = function (_EventEmitter) {
                 cellMeta.editor = false;
             }
             var data = this.originData[row] ? this.originData[row][col] : null;
-            if (isObject(data)) {
-                cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(data) };
-                cellMeta.readOnly = true;
+            if (data && data[0] === '{') {
+                try {
+                    var d = data.origin || JSON.parse(data);
+                    data.origin = d;
+                    cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(d) };
+                    cellMeta.readOnly = true;
+                } catch (err) {
+                    console.log('JSON.prase Error', data, err);
+                }
             } else if (data && data[0] === '=') {
                 cellMeta.comment = { value: data };
             }
@@ -233,9 +257,15 @@ var TableEditor = function (_EventEmitter) {
             var data = this.originData[row] ? this.originData[row][col] : null;
             var className = null;
             var showValue = null;
-            if (isObject(data)) {
-                className = 'object';
-                showValue = data.name;
+            if (data && data[0] === '{') {
+                try {
+                    var d = data.origin || JSON.parse(data);
+                    data.origin = d;
+                    className = 'object';
+                    showValue = d.name;
+                } catch (err) {
+                    console.log('JSON.prase Error', data, err);
+                }
             } else if (data && data[0] === '=') {
                 var result = this.parser(data.substr(1));
                 className = result.error ? 'error' : 'formula';
@@ -310,6 +340,12 @@ var TableEditor = function (_EventEmitter) {
                     return result.result;
                 }
                 return data;
+            } else if (data && data[0] === '{') {
+                try {
+                    return JSON.parse(data);
+                } catch (err) {
+                    console.error('JSON.parse Error', err);
+                }
             }
             return data;
         }
@@ -348,7 +384,7 @@ function getCellName(row, col) {
 }
 
 function isObject(data) {
-    return (typeof data === 'undefined' ? 'undefined' : _typeof(data)) === 'object' && data + '' === '[object Object]';
+    return data && (typeof data === 'undefined' ? 'undefined' : _typeof(data)) === 'object' && data + '' === '[object Object]';
 }
 
 module.exports = TableEditor;
