@@ -963,6 +963,8 @@ var TableEditor = function (_EventEmitter) {
         value: function getCellProp(row, col, prop) {
             // console.log('getCellProp', row, col)
             var cellMeta = {
+                comment: '',
+                editor: 'text',
                 renderer: this.cellRender.bind(this)
             };
             if (this.options.disabled) {
@@ -972,7 +974,8 @@ var TableEditor = function (_EventEmitter) {
             if (data && data[0] === '{') {
                 var d = this.JSONParse(data);
                 cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(d) };
-                cellMeta.readOnly = true;
+                cellMeta.editor = false;
+                // cellMeta.readOnly = true
             } else if (data && data[0] === '=') {
                 cellMeta.comment = { value: data };
             }
@@ -1015,6 +1018,7 @@ var TableEditor = function (_EventEmitter) {
             } catch (err) {
                 console.error('JSON.parse Error', err, str);
             }
+            return str;
         }
         // 计算公式的值
 

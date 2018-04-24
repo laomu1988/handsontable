@@ -207,6 +207,8 @@ class TableEditor extends EventEmitter {
     getCellProp(row, col, prop) {
         // console.log('getCellProp', row, col)
         let cellMeta = {
+            comment: '',
+            editor: 'text',
             renderer: this.cellRender.bind(this)
         }
         if (this.options.disabled) {
@@ -216,7 +218,8 @@ class TableEditor extends EventEmitter {
         if(data && data[0] === '{') {
             let d = this.JSONParse(data)
             cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
-            cellMeta.readOnly = true
+            cellMeta.editor = false
+            // cellMeta.readOnly = true
         }
         else if (data && data[0] === '=') {
             cellMeta.comment = {value: data}
@@ -258,6 +261,7 @@ class TableEditor extends EventEmitter {
         catch(err) {
             console.error('JSON.parse Error', err, str)
         }
+        return str
     }
     // 计算公式的值
     parser(formula) {
