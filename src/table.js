@@ -7,18 +7,35 @@ const FormulaParser = require('hot-formula-parser').Parser
 const menu = {
     row_above: {name: '上面添加行'},
     row_below: {name: '下面添加行'},
-    // hsep1: {name: ''},
+    hsep1: '---------',
     col_left: {name: '左侧添加列'},
     col_right: {name: '右侧添加列'},
-    // hsep2: {name: ''},
+    hsep2: '---------',
     remove_row: {name: '删除行'},
     remove_col: {name: '删除列'},
-    // hsep3
+    hsep3: '---------',
     undo: {name: '撤销'},
     redo: {name: '重做'},
+    hsep4: '---------',
     make_read_only: {name: '只读'},
-    alignment: {name: '对齐方式'},
-    borders: {name: '边框'},
+    alignment: {
+        name: '对齐方式',
+        // submenu: {
+        //     items: {
+        //         'alignment:left': {name: '左对齐'},
+        //         'alignment:middle': {name: '文字居中'},
+        //         'alignment:right': {name: '右对齐'},
+        //         'alignment:top': {name: '顶部展示'},
+        //         'alignment:bottom': {name: '底部展示'},
+        //         'alignment:center': {name: '中部对齐'},
+        //     }
+        // }
+    },
+    mergeCells: {
+        name: '合并/拆分单元格',
+    },
+    // borders: {name: '边框'},
+    hsep5: '---------',
     commentsAddEdit: {name: '编辑注释'},
     commentsRemove: {name: '移除注释'}
 }
@@ -110,8 +127,10 @@ class TableEditor extends EventEmitter {
         var defaultConfig = {
             rowHeaders: true,
             colHeaders: true,
-            mergeCells: true,
-            contextMenu: true,
+            mergeCells: true, // 合并单元格
+            contextMenu: true, // 右键菜单
+            manualRowResize: true, // 调整行高度
+            manualColumnResize: true, // 调整列宽度
             cells: this.getCellProp.bind(me), // this.cells,
             comments: true, // 展示注释
             afterChange() {
