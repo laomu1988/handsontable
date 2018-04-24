@@ -92,7 +92,7 @@ class TableEditor extends EventEmitter {
             let data = this.originData[row] ? this.originData[row][col] : null
             this.emit('dblclick', row, col, data)
             if (data && data[0] === '{') {
-                this.emit('dblclick-object', row, col, data.origin || JSON.parse(data))
+                this.emit('dblclick-object', row, col, data.origin || this.JSONParse(data))
             }
         }
     }
@@ -112,7 +112,19 @@ class TableEditor extends EventEmitter {
         parser.on('callCellValue', (cellCoord, done) => {
             let row = this.originData[cellCoord.row.index]
             let data = row ? row[cellCoord.column.index] : null
-            console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, arguments)
+            // console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, arguments)
+            if (data && data[0] === '=') {
+                let result = this.parser(data.substr(1))
+                if (!result.error) {
+                    return done(result.result)
+                }
+                else {
+                    console.error('FormulaParserError:', result)
+                }
+            }
+            else if (data && data[0] === '{') {
+                return done(this.JSONParse(data))
+            }
             done(data)
         });
 
@@ -202,15 +214,9 @@ class TableEditor extends EventEmitter {
         }
         let data = this.originData[row] ? this.originData[row][col] : null
         if(data && data[0] === '{') {
-            try {
-                let d = data.origin || JSON.parse(data)
-                data.origin = d;
-                cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
-                cellMeta.readOnly = true
-            }
-            catch(err) {
-                console.log('JSON.prase Error', data, err)
-            }
+            let d = this.JSONParse(data)
+            cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
+            cellMeta.readOnly = true
         }
         else if (data && data[0] === '=') {
             cellMeta.comment = {value: data}
@@ -224,15 +230,9 @@ class TableEditor extends EventEmitter {
         let className = null
         let showValue = null
         if(data && data[0] === '{') {
-            try {
-                let d = data.origin || JSON.parse(data)
-                data.origin = d;
-                className = 'object'
-                showValue = d.name
-            }
-            catch(err) {
-                console.log('JSON.prase Error', data, err)
-            }
+            let d = this.JSONParse(data)
+            className = 'object'
+            showValue = d.name
         }
         else if (data && data[0] === '=') {
             let result = this.parser(data.substr(1))
@@ -248,6 +248,16 @@ class TableEditor extends EventEmitter {
             td.innerHTML = showValue
         }
         return td
+    }
+    JSONParse(str) {
+        try {
+            let data = str.origin || JSON.parse(str)
+            str.origin = data
+            return data
+        }
+        catch(err) {
+            console.error('JSON.parse Error', err, str)
+        }
     }
     // 计算公式的值
     parser(formula) {
@@ -268,6 +278,9 @@ class TableEditor extends EventEmitter {
                 if (rowData) {
                     // console.log('rowData:', rowData)
                     let data = rowData[col]
+                    if (data && data[0] === '{') {
+                        data = this.JSONParse(data)
+                    }
                     return data[attr] || 0
                 }
                 return 0
@@ -298,12 +311,7 @@ class TableEditor extends EventEmitter {
             return data
         }
         else if(data && data[0] === '{') {
-            try {
-                return JSON.parse(data)
-            }
-            catch(err) {
-                console.error('JSON.parse Error', err)
-            }
+            return this.JSONParse(data)
         }
         return data
     }

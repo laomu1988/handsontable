@@ -7,9 +7,10 @@ var data = [
     ['对象', {name: '对象A', value: 123, hide: false}, {name: '对象B', value: 133}],
     ['公式', '=B2+C2'],
     ['错误示例', '=B1+B2'],
-    ['对象属性计算', '=B4.value'],
-    ['别名计算示例', '=B4.值'],
+    ['对象属性计算', '=B4.value + 1'],
+    ['别名计算示例', '=B4.值 + 1'],
     ['不存在的属性', '=B4.notExist'],
+    ['公式套公式', '=B5 + 10'],
 ]
 
 var container = document.getElementById('table')

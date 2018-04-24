@@ -111,7 +111,7 @@ var TableEditor = function (_EventEmitter) {
                 var data = this.originData[row] ? this.originData[row][col] : null;
                 this.emit('dblclick', row, col, data);
                 if (data && data[0] === '{') {
-                    this.emit('dblclick-object', row, col, data.origin || JSON.parse(data));
+                    this.emit('dblclick-object', row, col, data.origin || this.JSONParse(data));
                 }
             }
         }
@@ -136,7 +136,17 @@ var TableEditor = function (_EventEmitter) {
             parser.on('callCellValue', function (cellCoord, done) {
                 var row = _this2.originData[cellCoord.row.index];
                 var data = row ? row[cellCoord.column.index] : null;
-                console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, _arguments);
+                // console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, arguments)
+                if (data && data[0] === '=') {
+                    var result = _this2.parser(data.substr(1));
+                    if (!result.error) {
+                        return done(result.result);
+                    } else {
+                        console.error('FormulaParserError:', result);
+                    }
+                } else if (data && data[0] === '{') {
+                    return done(_this2.JSONParse(data));
+                }
                 done(data);
             });
 
@@ -236,14 +246,9 @@ var TableEditor = function (_EventEmitter) {
             }
             var data = this.originData[row] ? this.originData[row][col] : null;
             if (data && data[0] === '{') {
-                try {
-                    var d = data.origin || JSON.parse(data);
-                    data.origin = d;
-                    cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(d) };
-                    cellMeta.readOnly = true;
-                } catch (err) {
-                    console.log('JSON.prase Error', data, err);
-                }
+                var d = this.JSONParse(data);
+                cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(d) };
+                cellMeta.readOnly = true;
             } else if (data && data[0] === '=') {
                 cellMeta.comment = { value: data };
             }
@@ -258,14 +263,9 @@ var TableEditor = function (_EventEmitter) {
             var className = null;
             var showValue = null;
             if (data && data[0] === '{') {
-                try {
-                    var d = data.origin || JSON.parse(data);
-                    data.origin = d;
-                    className = 'object';
-                    showValue = d.name;
-                } catch (err) {
-                    console.log('JSON.prase Error', data, err);
-                }
+                var d = this.JSONParse(data);
+                className = 'object';
+                showValue = d.name;
             } else if (data && data[0] === '=') {
                 var result = this.parser(data.substr(1));
                 className = result.error ? 'error' : 'formula';
@@ -280,6 +280,17 @@ var TableEditor = function (_EventEmitter) {
                 td.innerHTML = showValue;
             }
             return td;
+        }
+    }, {
+        key: 'JSONParse',
+        value: function JSONParse(str) {
+            try {
+                var data = str.origin || JSON.parse(str);
+                str.origin = data;
+                return data;
+            } catch (err) {
+                console.error('JSON.parse Error', err, str);
+            }
         }
         // 计算公式的值
 
@@ -305,6 +316,9 @@ var TableEditor = function (_EventEmitter) {
                     if (rowData) {
                         // console.log('rowData:', rowData)
                         var data = rowData[col];
+                        if (data && data[0] === '{') {
+                            data = _this3.JSONParse(data);
+                        }
                         return data[attr] || 0;
                     }
                     return 0;
@@ -341,11 +355,7 @@ var TableEditor = function (_EventEmitter) {
                 }
                 return data;
             } else if (data && data[0] === '{') {
-                try {
-                    return JSON.parse(data);
-                } catch (err) {
-                    console.error('JSON.parse Error', err);
-                }
+                return this.JSONParse(data);
             }
             return data;
         }
