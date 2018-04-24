@@ -1,9 +1,27 @@
 /**
  * @file 表格编辑文件
  */
-var EventEmitter = require('eventemitter3');
-var Handsontable = require('handsontable/dist/handsontable.full.min.js')
-var FormulaParser = require('hot-formula-parser').Parser
+const EventEmitter = require('eventemitter3');
+const Handsontable = require('handsontable/dist/handsontable.full.min.js')
+const FormulaParser = require('hot-formula-parser').Parser
+const menu = {
+    row_above: {name: '上面添加行'},
+    row_below: {name: '下面添加行'},
+    // hsep1: {name: ''},
+    col_left: {name: '左侧添加列'},
+    col_right: {name: '右侧添加列'},
+    // hsep2: {name: ''},
+    remove_row: {name: '删除行'},
+    remove_col: {name: '删除列'},
+    // hsep3
+    undo: {name: '撤销'},
+    redo: {name: '重做'},
+    make_read_only: {name: '只读'},
+    alignment: {name: '对齐方式'},
+    borders: {name: '边框'},
+    commentsAddEdit: {name: '编辑注释'},
+    commentsRemove: {name: '移除注释'}
+}
 /**
  * 新建一个hansontable编辑区
  * @param {Object} options 
@@ -11,6 +29,8 @@ var FormulaParser = require('hot-formula-parser').Parser
  * @param {Array} options.data 编辑区使用的数据
  * @param {Object} options.config 覆盖handsontable默认配置
  * @param {Object} options.disabled 是否禁止编辑，默认false
+ * @param {Object} options.propAlias 属性的中文别名
+ * @param {Object} options.commentNeedAlias 只有指定了别名，对象的属性才会展示在注释中，避免注释内容过多, 默认false
  */
 class TableEditor extends EventEmitter {
     constructor(options) {
@@ -95,23 +115,26 @@ class TableEditor extends EventEmitter {
             cells: this.getCellProp.bind(me), // this.cells,
             comments: true, // 展示注释
             afterChange() {
-                console.log('afterChange:', me.originData)
+                // console.log('afterChange:', me.originData)
                 me.emit('change', me.originData)
                 me.emit('update', me.originData)
+            },
+            afterSelectionEnd(row, col, row2, col2) {
+                // console.log('selection', row, col, row2, col2)
+                me.emit('selection', row, col, row2, col2)
+                if (row2 === row && col2 === col) {
+                    me.emit('select-cell', row, col)
+                }
             },
             minSpareRows: 1
         }
         let config = Object.assign({}, defaultConfig, this.options.config, {data: this.originData})
         this.table = new Handsontable(this.dom, config)
-        if (this.options.disabled) {
-            this.table.updateSettings({
-                cells: function (row, col, prop) {
-                    return {
-                        editor: false
-                    }
-                }
-            })
-        }
+        this.table.updateSettings({
+            contextMenu: {
+                items: menu
+            }
+        })
     }
     // 设置单元格数据
     setDataAtCell(row, col, value) {
@@ -123,10 +146,10 @@ class TableEditor extends EventEmitter {
         let show = []
         let alias = this.options.propAlias
         for(let attr in obj) {
-            if (alias[attr]) {
+            if (alias && alias[attr]) {
                 aliasShow.push(alias[attr] + '(' + attr + '): ' + obj[attr])
             }
-            else {
+            else if (!this.options.commentNeedAlias) {
                 show.push(attr + ': ' + obj[attr])
             }
         }
@@ -136,6 +159,9 @@ class TableEditor extends EventEmitter {
         // console.log('getCellProp', row, col)
         let cellMeta = {
             renderer: this.cellRender.bind(this)
+        }
+        if (this.options.disabled) {
+            cellMeta.editor = false
         }
         let data = this.originData[row] ? this.originData[row][col] : null
         if (isObject(data)) {
@@ -148,7 +174,7 @@ class TableEditor extends EventEmitter {
         return cellMeta
     }
     cellRender(instance, td, row, col, prop, value, cellProperties) {
-        console.log('cellRender')
+        // console.log('cellRender')
         Handsontable.renderers.TextRenderer.apply(this, arguments);
         let data = this.originData[row] ? this.originData[row][col] : null
         let className = null
@@ -161,13 +187,13 @@ class TableEditor extends EventEmitter {
             let result = this.parser(data.substr(1))
             className = result.error ? 'error' : 'formula'
             showValue = result.error ? data : result.result
-            console.log('parser:', data, result)
+            // console.log('parser:', data, result)
         }
         if (className) {
             td.classList.add(className)
         }
         if (showValue !== null) {
-            console.log('showValue', showValue)
+            // console.log('showValue', showValue)
             td.innerHTML = showValue
         }
         return td
@@ -177,7 +203,7 @@ class TableEditor extends EventEmitter {
         let alias = this.alias
         if (alias) {
             formula = formula.replace(/[^\.\s\+\-\*\/\(\)]+/g, function(word) {
-                console.log('word', word)
+                // console.log('word', word)
                 return alias[word] || word
             })
         }
@@ -189,7 +215,7 @@ class TableEditor extends EventEmitter {
                 row = parseInt(row, 10) - 1
                 let rowData = this.originData[row]
                 if (rowData) {
-                    console.log('rowData:', rowData)
+                    // console.log('rowData:', rowData)
                     let data = rowData[col]
                     return data[attr] || 0
                 }
