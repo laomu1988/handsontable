@@ -19,7 +19,10 @@
 * [x] 公式中引用另一个单元格的计算结果
 * [ ] 条件表达式
 
-## 示例
+## [效果预览](https://laomu1988.github.io/handsontable/)
+
+
+## 示例（参考src/example.js）
 ```
 require('@laomu/handsontable/dist/style.css')
 const Tabel = require('@laomu/handsontable')

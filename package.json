@@ -11,6 +11,10 @@
   },
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:laomu1988/handsontable.git"
+  },
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-generator": "^6.26.1",
