@@ -28,34 +28,54 @@
 require('@laomu/handsontable/dist/style.css')
 const Tabel = require('@laomu/handsontable')
 var data = [
-    ['', 'Ford', 'Tesla', 'Toyota', 'Honda'],
-    ['2017', 10, 11, 12, {name: '数据{value: 123}', value: 123}],
-    ['2018', 20, 11, 14, 13],
-    ['2019', 30, '=B1+B2', '=A2+B2', '=E2.value+1']
+    ['说明', '内容', '内容'],
+    ['数据', 10, 11],
+    ['字符串', 'AAA', ''],
+    ['对象', {name: '对象A', value: 123, hide: false}, {name: '对象B', value: 133}],
+    ['公式', '=B2+C2'],
+    ['错误示例', '=B1+B2'],
+    ['对象属性计算', '=B4.value + 1'],
+    ['别名计算示例', '=B4.值 + 1'],
+    ['不存在的属性', '=B4.notExist'],
+    ['公式套公式', '=B5 + 10'],
 ]
 
 var container = document.getElementById('table')
 var hot = new Tabel({
     dom: container,
-    data: data
+    data: data,
+    // 属性别名
+    propAlias: {
+        'value': '值'
+    }
 })
 
-// 需要选择object数据时触发
+// 需要选择数据时触发
 hot.on('dblclick-object', function(row, col, data) {
     console.log('select:', row, col, data);
     setTimeout(() => {
         let value = data.value
         hot.setDataAtCell(row, col, {
-            name: 'selected:' + (value + 1),
+            name: '值:' + (value + 1),
             value: (value + 1)
         })
     }, 1000)
 });
 ```
 
+## 初始化参数
+* dom 编辑区所在dom
+* data 编辑区使用的数据
+* config 覆盖handsontable默认配置
+* disabled 是否禁止编辑，默认false
+* propAlias 对象属性的中文别名
+* commentNeedAlias 只有指定了别名，对象的属性才会展示在注释中，避免注释内容过多, 默认false
+
 ## 事件
 * dblclick(row, col, data) 点击单元格触发
 * dblclick-object(row, col, obj) 点击了对象单元格
+* selection(row1, col1, row2, col2) 选中了某个区域时触发
+* select-cell(row, col) 选择了某个单元格时触发
 * change/update(array) 数据更新事件
 
 ## 方法
@@ -66,8 +86,8 @@ hot.on('dblclick-object', function(row, col, data) {
 
 ## 相关链接
 * handsantable: https://github.com/handsontable/handsontable
-* handsantable事件列表：https://docs.handsontable.com/pro/1.18.1/tutorial-using-callbacks.html
-* formula-parser公式计算：https://github.com/handsontable/formula-parser
+* handsantable事件列表: https://docs.handsontable.com/pro/1.18.1/tutorial-using-callbacks.html
+* formula-parser公式计算: https://github.com/handsontable/formula-parser
 
 ## 版本
 * v1.0.4

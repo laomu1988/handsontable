@@ -9,7 +9,7 @@
     "webpack": "cross-env NODE_ENV=dev webpack",
     "build": "lessc src/style.less dist/style.css && babel src/table.js --out-file dist/table.js --ignore src/index.js"
   },
-  "author": "",
+  "author": "laomu1988",
   "license": "MIT",
   "repository": {
     "type": "git",
