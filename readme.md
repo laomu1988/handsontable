@@ -20,7 +20,7 @@
 * [ ] 条件表达式
 
 ## [效果预览](https://laomu1988.github.io/handsontable/)
-
+<a href="https://laomu1988.github.io/handsontable/" target="_black"><img src="https://raw.githubusercontent.com/laomu1988/handsontable/master/doc/preview.png"></a>
 
 ## 示例（参考src/example.js）
 ```
