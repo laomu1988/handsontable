@@ -1,6 +1,6 @@
 {
   "name": "@laomu/handsontable",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "handsontable with formula",
   "main": "dist/table.js",
   "scripts": {

@@ -18,9 +18,10 @@
 * [x] Object对象复制
 * [x] 公式中引用另一个单元格的计算结果
 * [ ] 条件表达式
+* [ ] SUM等区域函数
 
 ## [效果预览](https://laomu1988.github.io/handsontable/)
-<a href="https://laomu1988.github.io/handsontable/" target="_black"><img src="https://raw.githubusercontent.com/laomu1988/handsontable/master/doc/preview.png"></a>
+<a href="https://laomu1988.github.io/handsontable/" target="_blank"><img src="https://raw.githubusercontent.com/laomu1988/handsontable/master/doc/preview.png"></a>
 
 ## 示例（参考src/example.js）
 ```
@@ -64,5 +65,11 @@ hot.on('dblclick-object', function(row, col, data) {
 * getCellOrigin(row, col) 获取单元格原始数据
 
 ## 相关链接
-* 事件列表：https://docs.handsontable.com/pro/1.18.1/tutorial-using-callbacks.html
-* 公式计算：https://github.com/handsontable/formula-parser
+* handsantable: https://github.com/handsontable/handsontable
+* handsantable事件列表：https://docs.handsontable.com/pro/1.18.1/tutorial-using-callbacks.html
+* formula-parser公式计算：https://github.com/handsontable/formula-parser
+
+## 版本
+* v1.0.4
+    - 对象可复制、删除
+    - 公式嵌套公式
