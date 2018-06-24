@@ -4,11 +4,9 @@
 * [x] 公式单元格黄色背景
 * [x] 非法数据红色背景
 * [x] 撤销和重做、粘贴等数据更新
-* [ ] 中间插入或删除行或列时，更新所有公式中包含了底部或右侧区域的内容
 * [x] 调整宽度
 * [x] 禁止编辑状态
 * [x] 数据修改后其他依赖该数据的需要重新计算
-* [ ] 可下拉选择数据
 * [x] 菜单改为中文
 * [x] 公式默认展示计算结果，hover时提示公式内容
 * [x] 支持Object对象属性计算
@@ -17,8 +15,12 @@
 * [x] Object对象删除
 * [x] Object对象复制
 * [x] 公式中引用另一个单元格的计算结果
+* [ ] 自定义对象展示函数
 * [ ] 条件表达式
 * [ ] SUM等区域函数
+* [ ] 中间插入或删除行或列时，更新所有公式中包含了底部或右侧区域的内容
+* [ ] 可下拉选择数据
+* [ ] 单元格合并及对齐方式修改存储
 
 ## [效果预览](https://laomu1988.github.io/handsontable/)
 <a href="https://laomu1988.github.io/handsontable/" target="_blank"><img src="https://raw.githubusercontent.com/laomu1988/handsontable/master/doc/preview.png"></a>
@@ -28,7 +30,7 @@
 require('@laomu/handsontable/dist/style.css')
 const Tabel = require('@laomu/handsontable')
 var data = [
-    ['说明', '内容', '内容'],
+    ['说明', '内容', null],
     ['数据', 10, 11],
     ['字符串', 'AAA', ''],
     ['对象', {name: '对象A', value: 123, hide: false}, {name: '对象B', value: 133}],
@@ -47,7 +49,15 @@ var hot = new Tabel({
     // 属性别名
     propAlias: {
         'value': '值'
-    }
+    },
+    // 合并单元格
+    mergeCells: [
+        {row: 0, col: 1, rowspan: 1, colspan: 2}
+    ],
+    // 对齐方式
+    metas: [
+        {row: 0, col: 0, meta: {className: 'htRight'}}
+    ],
 })
 
 // 需要选择数据时触发
@@ -61,6 +71,11 @@ hot.on('dblclick-object', function(row, col, data) {
         })
     }, 1000)
 });
+
+// 当有数据变化时触发
+hot.on('update', function(data) {
+    console.log('update:', hot.getDataWithFormat());
+})
 ```
 
 ## 初始化参数
@@ -83,13 +98,19 @@ hot.on('dblclick-object', function(row, col, data) {
 * setDataAtCell(row, col, data) 设置单元格的值
 * getCellData(row, col) 获取单元格计算后的值
 * getCellOrigin(row, col) 获取单元格原始数据
+* getDataWithFormat() 取得包含格式等内容的数据
 
 ## 相关链接
 * handsantable: https://github.com/handsontable/handsontable
 * handsantable事件列表: https://docs.handsontable.com/pro/1.18.1/tutorial-using-callbacks.html
 * formula-parser公式计算: https://github.com/handsontable/formula-parser
 
+## 开发说明
+执行`npm run dev`
+
 ## 版本
+* v1.0.5
+    - 表格初始化时包含合并单元格和对齐方式
 * v1.0.4
     - 对象可复制、删除
     - 公式嵌套公式

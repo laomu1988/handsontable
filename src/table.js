@@ -39,6 +39,7 @@ const menu = {
     commentsAddEdit: {name: '编辑注释'},
     commentsRemove: {name: '移除注释'}
 }
+
 /**
  * 新建一个hansontable编辑区
  * @param {Object} options 
@@ -48,15 +49,23 @@ const menu = {
  * @param {Object} options.disabled 是否禁止编辑，默认false
  * @param {Object} options.propAlias 属性的中文别名
  * @param {Object} options.commentNeedAlias 只有指定了别名，对象的属性才会展示在注释中，避免注释内容过多, 默认false
+ * @param {Function} options.objectRender(obj) 当是Object对象时，转换为stirng展示在输入框中
  */
 class TableEditor extends EventEmitter {
     constructor(options) {
         super();
-        this.originData = options.data
+        let data = options.data || {}
+        this.originData = data instanceof Array ? data : data.data || [
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+        ]
         this.options = options
         this.dom = options.dom
         this.formulaParser = null // 公式计算实例
         this.table = null // hansontable编辑实例
+        this.mergeCells = options.mergeCells || data.mergeCells || []
+        options.metas = options.metas || data.metas || []
         this.errorFields = []
         this.createFormulaParser()
 
@@ -133,17 +142,17 @@ class TableEditor extends EventEmitter {
             var data = this.originData;
             var fragment = [];
             for (var row = startCellCoord.row.index; row <= endCellCoord.row.index; row++) {
-            var rowData = data[row];
-            var colFragment = [];
-        
-            for (var col = startCellCoord.column.index; col <= endCellCoord.column.index; col++) {
-                colFragment.push(rowData[col]);
-            }
-            fragment.push(colFragment);
+                var rowData = data[row];
+                var colFragment = [];
+            
+                for (var col = startCellCoord.column.index; col <= endCellCoord.column.index; col++) {
+                    colFragment.push(rowData[col]);
+                }
+                fragment.push(colFragment);
             }
         
             if (fragment) {
-            done(fragment);
+                done(fragment);
             }
         });
         this.formulaParser = parser;
@@ -154,7 +163,7 @@ class TableEditor extends EventEmitter {
         var defaultConfig = {
             rowHeaders: true,
             colHeaders: true,
-            mergeCells: true, // 合并单元格
+            mergeCells: this.mergeCells, // 合并单元格
             contextMenu: true, // 右键菜单
             manualRowResize: true, // 调整行高度
             manualColumnResize: true, // 调整列宽度
@@ -162,8 +171,7 @@ class TableEditor extends EventEmitter {
             comments: true, // 展示注释
             afterChange() {
                 // console.log('afterChange:', me.originData)
-                me.emit('change', me.originData)
-                me.emit('update', me.originData)
+                me.update();
             },
             afterSelectionEnd(row, col, row2, col2) {
                 // console.log('selection', row, col, row2, col2)
@@ -172,15 +180,54 @@ class TableEditor extends EventEmitter {
                     me.emit('select-cell', row, col)
                 }
             },
+            afterMergeCells(cellRange) {
+                console.log('mergeCell:', cellRange)
+                let from = cellRange.from
+                let to = cellRange.to
+                let cell = me.mergeCells.find(v => v.row === from.row && v.col === from.col);
+                if (!cell) {
+                    me.mergeCells.push({
+                        row: from.row,
+                        col: from.col,
+                        rowspan: to.row - from.row + 1,
+                        colspan: to.col - from.col + 1,
+                    });
+                }
+                else {
+                    cell.rowspan = to.row - from.row + 1
+                    cell.colspan = to.col - from.col + 1
+                }
+                me.update()
+            },
+            afterUnmergeCells(cellRange) {
+                let from = cellRange.from;
+                let index = me.mergeCells.findIndex(v => v.row === from.row && v.col === from.col);
+                if (index >= 0) {
+                    me.mergeCells.splice(index, 1);
+                }
+                me.update()
+            },
+            afterSetCellMeta() {
+                me.update()
+            },
             minSpareRows: 1
         }
         let config = Object.assign({}, defaultConfig, this.options.config, {data: this.originData})
         this.table = new Handsontable(this.dom, config)
+        if (this.options.metas && this.options.metas.length > 0) {
+            this.options.metas.forEach(v => {
+                this.table.setCellMetaObject(v.row, v.col, v.meta);
+            });
+        }
         this.table.updateSettings({
             contextMenu: {
                 items: menu
             }
         })
+    }
+    update() {
+        this.emit('change', this.originData)
+        this.emit('update', this.originData)
     }
     // 设置单元格数据
     setDataAtCell(row, col, value) {
@@ -235,7 +282,12 @@ class TableEditor extends EventEmitter {
         if(data && data[0] === '{') {
             let d = this.JSONParse(data)
             className = 'object'
-            showValue = d.name
+            if (this.options.objectRender) {
+                showValue = this.options.objectRender(d, row, col);
+            }
+            else {
+                showValue = d.name
+            }
         }
         else if (data && data[0] === '=') {
             let result = this.parser(data.substr(1))
@@ -297,8 +349,26 @@ class TableEditor extends EventEmitter {
         // 使用公式计算出结果
         return this.formulaParser.parse(formula)
     }
+    // 取得编辑数据
     getData() {
         return this.originData
+    }
+    // 获取包含样式部分的数据
+    getDataWithFormat() {
+        let metas = []
+        for(let i = 0; i < this.originData.length; i++) {
+            this.table.getCellMetaAtRow(i).forEach((v, col) => {
+                if (v.className) {
+                    metas.push({row: i, col, meta: {className: v.className}})
+                }
+            })
+        }
+        let data = {
+            data: this.originData,
+            mergeCells: this.mergeCells,
+            metas
+        }
+        return data;
     }
     // 取得单元格原始数据
     getCellOrigin(row, col) {

@@ -69,7 +69,7 @@
 
 __webpack_require__(1);
 var Tabel = __webpack_require__(6);
-var data = [['说明', '内容', '内容'], ['数据', 10, 11], ['字符串', 'AAA', ''], ['对象', { name: '对象A', value: 123, hide: false }, { name: '对象B', value: 133 }], ['公式', '=B2+C2'], ['错误示例', '=B1+B2'], ['对象属性计算', '=B4.value + 1'], ['别名计算示例', '=B4.值 + 1'], ['不存在的属性', '=B4.notExist'], ['公式套公式', '=B5 + 10']];
+var data = [['说明', '内容', null], ['数据', 10, 11], ['字符串', 'AAA', ''], ['对象', { name: '对象A', value: 123, hide: false }, { name: '对象B', value: 133 }], ['公式', '=B2+C2'], ['错误示例', '=B1+B2'], ['对象属性计算', '=B4.value + 1'], ['别名计算示例', '=B4.值 + 1'], ['不存在的属性', '=B4.notExist'], ['公式套公式', '=B5 + 10'], ['公式SUM', '=SUM(B2:C2)']];
 
 var container = document.getElementById('table');
 var hot = new Tabel({
@@ -78,7 +78,9 @@ var hot = new Tabel({
     // 属性别名
     propAlias: {
         'value': '值'
-    }
+    },
+    mergeCells: [{ row: 0, col: 1, rowspan: 1, colspan: 2 }],
+    metas: [{ row: 0, col: 0, meta: { className: 'htRight' } }]
 });
 
 // 需要选择数据时触发
@@ -91,6 +93,10 @@ hot.on('dblclick-object', function (row, col, data) {
             value: value + 1
         });
     }, 1000);
+});
+
+hot.on('update', function (data) {
+    console.log('update:', hot.getDataWithFormat());
 });
 
 window.hot = hot;
@@ -772,6 +778,7 @@ var menu = {
     hsep5: '---------',
     commentsAddEdit: { name: '编辑注释' },
     commentsRemove: { name: '移除注释' }
+
     /**
      * 新建一个hansontable编辑区
      * @param {Object} options 
@@ -781,6 +788,7 @@ var menu = {
      * @param {Object} options.disabled 是否禁止编辑，默认false
      * @param {Object} options.propAlias 属性的中文别名
      * @param {Object} options.commentNeedAlias 只有指定了别名，对象的属性才会展示在注释中，避免注释内容过多, 默认false
+     * @param {Function} options.objectRender(obj) 当是Object对象时，转换为stirng展示在输入框中
      */
 };
 var TableEditor = function (_EventEmitter) {
@@ -791,11 +799,14 @@ var TableEditor = function (_EventEmitter) {
 
         var _this = _possibleConstructorReturn(this, (TableEditor.__proto__ || Object.getPrototypeOf(TableEditor)).call(this));
 
-        _this.originData = options.data;
+        var data = options.data || {};
+        _this.originData = data instanceof Array ? data : data.data || [['', '', '', '', ''], ['', '', '', '', ''], ['', '', '', '', '']];
         _this.options = options;
         _this.dom = options.dom;
         _this.formulaParser = null; // 公式计算实例
         _this.table = null; // hansontable编辑实例
+        _this.mergeCells = options.mergeCells || data.mergeCells || [];
+        options.metas = options.metas || data.metas || [];
         _this.errorFields = [];
         _this.createFormulaParser();
 
@@ -897,12 +908,14 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'createTable',
         value: function createTable() {
+            var _this3 = this;
+
             var me = this;
             // 渲染表格
             var defaultConfig = {
                 rowHeaders: true,
                 colHeaders: true,
-                mergeCells: true, // 合并单元格
+                mergeCells: this.mergeCells, // 合并单元格
                 contextMenu: true, // 右键菜单
                 manualRowResize: true, // 调整行高度
                 manualColumnResize: true, // 调整列宽度
@@ -910,8 +923,7 @@ var TableEditor = function (_EventEmitter) {
                 comments: true, // 展示注释
                 afterChange: function afterChange() {
                     // console.log('afterChange:', me.originData)
-                    me.emit('change', me.originData);
-                    me.emit('update', me.originData);
+                    me.update();
                 },
                 afterSelectionEnd: function afterSelectionEnd(row, col, row2, col2) {
                     // console.log('selection', row, col, row2, col2)
@@ -920,16 +932,60 @@ var TableEditor = function (_EventEmitter) {
                         me.emit('select-cell', row, col);
                     }
                 },
+                afterMergeCells: function afterMergeCells(cellRange) {
+                    console.log('mergeCell:', cellRange);
+                    var from = cellRange.from;
+                    var to = cellRange.to;
+                    var cell = me.mergeCells.find(function (v) {
+                        return v.row === from.row && v.col === from.col;
+                    });
+                    if (!cell) {
+                        me.mergeCells.push({
+                            row: from.row,
+                            col: from.col,
+                            rowspan: to.row - from.row + 1,
+                            colspan: to.col - from.col + 1
+                        });
+                    } else {
+                        cell.rowspan = to.row - from.row + 1;
+                        cell.colspan = to.col - from.col + 1;
+                    }
+                    me.update();
+                },
+                afterUnmergeCells: function afterUnmergeCells(cellRange) {
+                    var from = cellRange.from;
+                    var index = me.mergeCells.findIndex(function (v) {
+                        return v.row === from.row && v.col === from.col;
+                    });
+                    if (index >= 0) {
+                        me.mergeCells.splice(index, 1);
+                    }
+                    me.update();
+                },
+                afterSetCellMeta: function afterSetCellMeta() {
+                    me.update();
+                },
 
                 minSpareRows: 1
             };
             var config = Object.assign({}, defaultConfig, this.options.config, { data: this.originData });
             this.table = new Handsontable(this.dom, config);
+            if (this.options.metas && this.options.metas.length > 0) {
+                this.options.metas.forEach(function (v) {
+                    _this3.table.setCellMetaObject(v.row, v.col, v.meta);
+                });
+            }
             this.table.updateSettings({
                 contextMenu: {
                     items: menu
                 }
             });
+        }
+    }, {
+        key: 'update',
+        value: function update() {
+            this.emit('change', this.originData);
+            this.emit('update', this.originData);
         }
         // 设置单元格数据
 
@@ -992,7 +1048,11 @@ var TableEditor = function (_EventEmitter) {
             if (data && data[0] === '{') {
                 var d = this.JSONParse(data);
                 className = 'object';
-                showValue = d.name;
+                if (this.options.objectRender) {
+                    showValue = this.options.objectRender(d, row, col);
+                } else {
+                    showValue = d.name;
+                }
             } else if (data && data[0] === '=') {
                 var result = this.parser(data.substr(1));
                 className = result.error ? 'error' : 'formula';
@@ -1025,7 +1085,7 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'parser',
         value: function parser(formula) {
-            var _this3 = this;
+            var _this4 = this;
 
             var alias = this.alias;
             if (alias) {
@@ -1040,12 +1100,12 @@ var TableEditor = function (_EventEmitter) {
                 formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, function (all, col, row, attr) {
                     col = getColByColName(col);
                     row = parseInt(row, 10) - 1;
-                    var rowData = _this3.originData[row];
+                    var rowData = _this4.originData[row];
                     if (rowData) {
                         // console.log('rowData:', rowData)
                         var data = rowData[col];
                         if (data && data[0] === '{') {
-                            data = _this3.JSONParse(data);
+                            data = _this4.JSONParse(data);
                         }
                         return data[attr] || 0;
                     }
@@ -1058,10 +1118,39 @@ var TableEditor = function (_EventEmitter) {
             // 使用公式计算出结果
             return this.formulaParser.parse(formula);
         }
+        // 取得编辑数据
+
     }, {
         key: 'getData',
         value: function getData() {
             return this.originData;
+        }
+        // 获取包含样式部分的数据
+
+    }, {
+        key: 'getDataWithFormat',
+        value: function getDataWithFormat() {
+            var _this5 = this;
+
+            var metas = [];
+
+            var _loop = function _loop(i) {
+                _this5.table.getCellMetaAtRow(i).forEach(function (v, col) {
+                    if (v.className) {
+                        metas.push({ row: i, col: col, meta: { className: v.className } });
+                    }
+                });
+            };
+
+            for (var i = 0; i < this.originData.length; i++) {
+                _loop(i);
+            }
+            var data = {
+                data: this.originData,
+                mergeCells: this.mergeCells,
+                metas: metas
+            };
+            return data;
         }
         // 取得单元格原始数据
 
