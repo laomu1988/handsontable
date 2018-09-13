@@ -12,8 +12,8 @@ var data = [
     ['不存在的属性', '=B4.notExist'],
     ['公式套公式', '=B5 + 10', {$prop: 'name'}],
     ['公式SUM', '=SUM(B2:C2)'],
-    ['编辑value', {prop: 'name', value: 1, editable: true, copyable: false}],
-    ['禁止编辑', {prop: 'name', value: '12', editable: false}],
+    ['编辑value', {prop: 'name', value: 1, copyable: false}],
+    ['禁止编辑', {prop: 'name', value: '12', readOnly: true}],
 ]
 
 var container = document.getElementById('table')
@@ -39,12 +39,12 @@ var hot = new Tabel({
 // 需要选择数据时触发
 hot.on('dblclick-object', function(row, col, data) {
     console.log('select:', row, col, data);
-    setTimeout(() => {
-        if (typeof data === 'object') {
-            data.value = (parseInt(data.value) || 0) + 1
-            hot.setDataAtCell(row, col, data)
-        }
-    }, 1000)
+    // setTimeout(() => {
+    //     if (typeof data === 'object') {
+    //         data.value = (parseInt(data.value) || 0) + 1
+    //         hot.setDataAtCell(row, col, data)
+    //     }
+    // }, 1000)
 });
 
 hot.on('update', function(data) {

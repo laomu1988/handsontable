@@ -22,9 +22,10 @@
 * [ ] 可下拉选择数据
 * [ ] 单元格合并及对齐方式修改存储
 * [x] 外界更新数据时如何更新界面(render函数)
-* [ ] [自定义编辑支持](https://docs.handsontable.com/pro/5.0.2/tutorial-cell-editor.html)
-* [ ] 自定义输入
-
+* [x] [ObjectEditor自定义编辑支持](https://docs.handsontable.com/pro/5.0.2/tutorial-cell-editor.html)
+* [ ] 禁止复制对象
+* [ ] 禁止删除对象
+* [ ] 避免对象覆盖编辑(可删除后重新编辑)
 
 ## [效果预览](https://laomu1988.github.io/handsontable/)
 <a href="https://laomu1988.github.io/handsontable/" target="_blank"><img src="https://raw.githubusercontent.com/laomu1988/handsontable/master/doc/preview.png"></a>

@@ -4,6 +4,7 @@
 const EventEmitter = require('eventemitter3');
 const Handsontable = require('handsontable/dist/handsontable.full.min.js')
 const FormulaParser = require('hot-formula-parser').Parser
+const ObjectEditor = require('./object_editor');
 const menu = {
     row_above: {name: '上面添加行'},
     row_below: {name: '下面添加行'},
@@ -75,7 +76,7 @@ class TableEditor extends EventEmitter {
                 if (row && row.length > 0 && row.map) {
                     return row.map(value => {
                         if (isObject(value)) {
-                            return new String(JSON.stringify(value))
+                            return JSON.stringify(value)
                         }
                         return value
                     })
@@ -273,8 +274,10 @@ class TableEditor extends EventEmitter {
             let d = this.JSONParse(data)
             if (typeof d === 'object') {
                 cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
-                cellMeta.editor = false
-                cellMeta.readOnly = true
+                cellMeta.editor = ObjectEditor
+                if (d.readOnly || d.disabled) {
+                    cellMeta.readOnly = true;
+                }
             }
         }
         else if (data && data[0] === '=') {
