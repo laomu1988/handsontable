@@ -101,7 +101,10 @@ class TableEditor extends EventEmitter {
             let data = this.originData[row] ? this.originData[row][col] : null
             this.emit('dblclick', row, col, data)
             if (data && data[0] === '{') {
-                this.emit('dblclick-object', row, col, data.origin || this.JSONParse(data))
+                let obj = this.JSONParse(data);
+                if (typeof obj !== 'string') {
+                    this.emit('dblclick-object', row, col, obj)
+                }
             }
         }
     }
@@ -229,6 +232,10 @@ class TableEditor extends EventEmitter {
         this.emit('change', this.originData)
         this.emit('update', this.originData)
     }
+    // 重新绘制表格
+    render() {
+        this.table.render();
+    }
     // 设置单元格数据
     setDataAtCell(row, col, value) {
         if (isObject(value)) {
@@ -264,9 +271,11 @@ class TableEditor extends EventEmitter {
         let data = this.originData[row] ? this.originData[row][col] : null
         if(data && data[0] === '{') {
             let d = this.JSONParse(data)
-            cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
-            cellMeta.editor = false
-            // cellMeta.readOnly = true
+            if (typeof d === 'object') {
+                cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
+                cellMeta.editor = false
+                cellMeta.readOnly = true
+            }
         }
         else if (data && data[0] === '=') {
             cellMeta.comment = {value: data}
@@ -281,12 +290,20 @@ class TableEditor extends EventEmitter {
         let showValue = null
         if(data && data[0] === '{') {
             let d = this.JSONParse(data)
-            className = 'object'
-            if (this.options.objectRender) {
-                showValue = this.options.objectRender(d, row, col);
+            if (typeof d === 'string') {
+                showValue = d
             }
             else {
-                showValue = d.name
+                className = 'object'
+                if (d.className) {
+                    className += ' ' + d.className;
+                }
+                if (this.options.objectRender) {
+                    showValue = this.options.objectRender(d, row, col);
+                }
+                else {
+                    showValue = [d.name, d.value].filter(v => typeof v !== 'undefined').join(':') 
+                }
             }
         }
         else if (data && data[0] === '=') {
@@ -306,9 +323,7 @@ class TableEditor extends EventEmitter {
     }
     JSONParse(str) {
         try {
-            let data = str.origin || JSON.parse(str)
-            str.origin = data
-            return data
+            return JSON.parse(str)
         }
         catch(err) {
             console.error('JSON.parse Error', err, str)
