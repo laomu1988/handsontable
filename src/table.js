@@ -229,6 +229,36 @@ class TableEditor extends EventEmitter {
             }
         })
     }
+    insertRow(rowIndex, array) {
+        this.table.alter('insert_row', rowIndex, 1);
+        // this.originData.splice(rowIndex, 0, array)
+        // todo：更新公式，合并单元格等信息
+        array.forEach((value, col) => {
+            this.table.setDataAtCell(rowIndex, col, this.stringify(value));
+        })
+        this.render();
+        console.log('data', this.originData)
+    }
+    deleteRow(rowIndex, deleted = 1) {
+        this.table.alter('remove_row', rowIndex, deleted);
+        // todo：更新公式，合并单元格等信息
+        this.render();
+        console.log('data', this.originData)
+    }
+    stringify(data) {
+        switch(typeof data) {
+            case 'string':
+            case 'number':
+                return data;
+            case 'undefined':
+                return '';
+            default:
+                if (data === null) {
+                    return '';
+                }
+                return JSON.stringify(data);
+        }
+    }
     update() {
         this.emit('change', this.originData)
         this.emit('update', this.originData)

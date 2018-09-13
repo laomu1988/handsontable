@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "open index.html && webpack --watch",
     "webpack": "cross-env NODE_ENV=dev webpack",
-    "build": "lessc src/style.less dist/style.css && babel src/table.js --out-file dist/table.js --ignore src/index.js"
+    "build": "lessc src/style.less dist/style.css && babel src/ --out-dir dist/"
   },
   "author": "laomu1988",
   "license": "MIT",

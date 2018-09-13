@@ -55,15 +55,17 @@ hot.on('update-attr', function(data) {
     console.log('update:', data);
 })
 
-document
-    .getElementById('addLine')
-    .addEventListener('click', function() {
-        let data = hot.getData();
-        let addData = data[0].map(v => v);
-        data.splice(1, 0, addData)
-        console.log('click', data);
-        hot.render();
-    }, false)
+addListener('#addLine', () => {
+    let data = hot.getData();
+    let addData = data[0].map(v => v);
+    hot.insertRow(0, addData);
+})
+
+
+addListener('#deleteLine', () => {
+    hot.deleteRow(0);
+})
+
 
 document
     .getElementById('disable')
@@ -71,4 +73,13 @@ document
         console.log('disable');
     }, false)
 
+window.table = hot.table
+
 window.hot = hot
+
+
+function addListener(selector, callback) {
+    document
+        .querySelector(selector)
+        .addEventListener('click', callback, false)
+}
