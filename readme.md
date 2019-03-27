@@ -104,6 +104,7 @@ hot.on('update', function(data) {
 * getCellData(row, col) 获取单元格计算后的值
 * getCellOrigin(row, col) 获取单元格原始数据
 * getDataWithFormat() 取得包含格式等内容的数据
+* updateSettings() 更新配置后调用
 
 ## 相关链接
 * handsantable: https://github.com/handsontable/handsontable

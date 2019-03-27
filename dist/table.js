@@ -14,6 +14,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var EventEmitter = require('eventemitter3');
 var Handsontable = require('handsontable/dist/handsontable.full.min.js');
 var FormulaParser = require('hot-formula-parser').Parser;
+var ObjectEditor = require('./object_editor');
 var menu = {
     row_above: { name: '上面添加行' },
     row_below: { name: '下面添加行' },
@@ -86,7 +87,7 @@ var TableEditor = function (_EventEmitter) {
                 if (row && row.length > 0 && row.map) {
                     return row.map(function (value) {
                         if (isObject(value)) {
-                            return new String(JSON.stringify(value));
+                            return JSON.stringify(value);
                         }
                         return value;
                     });
@@ -116,7 +117,10 @@ var TableEditor = function (_EventEmitter) {
                 var data = this.originData[row] ? this.originData[row][col] : null;
                 this.emit('dblclick', row, col, data);
                 if (data && data[0] === '{') {
-                    this.emit('dblclick-object', row, col, data.origin || this.JSONParse(data));
+                    var obj = this.JSONParse(data);
+                    if (typeof obj !== 'string') {
+                        this.emit('dblclick-object', row, col, obj);
+                    }
                 }
             }
         }
@@ -191,6 +195,7 @@ var TableEditor = function (_EventEmitter) {
                 manualColumnResize: true, // 调整列宽度
                 cells: this.getCellProp.bind(me), // this.cells,
                 comments: true, // 展示注释
+                readOnly: !!this.options.disabled,
                 afterChange: function afterChange() {
                     // console.log('afterChange:', me.originData)
                     me.update();
@@ -245,17 +250,71 @@ var TableEditor = function (_EventEmitter) {
                     _this3.table.setCellMetaObject(v.row, v.col, v.meta);
                 });
             }
+            this.updateSettings();
+        }
+    }, {
+        key: 'updateSettings',
+        value: function updateSettings() {
+            // 可编辑时才添加菜单
             this.table.updateSettings({
-                contextMenu: {
+                readOnly: !!this.options.disabled,
+                contextMenu: this.options.disabled ? false : {
                     items: menu
                 }
             });
+        }
+    }, {
+        key: 'insertRow',
+        value: function insertRow(rowIndex, array) {
+            var _this4 = this;
+
+            this.table.alter('insert_row', rowIndex, 1);
+            // this.originData.splice(rowIndex, 0, array)
+            // todo：更新公式，合并单元格等信息
+            array.forEach(function (value, col) {
+                _this4.table.setDataAtCell(rowIndex, col, _this4.stringify(value));
+            });
+            this.render();
+            console.log('data', this.originData);
+        }
+    }, {
+        key: 'deleteRow',
+        value: function deleteRow(rowIndex) {
+            var deleted = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+
+            this.table.alter('remove_row', rowIndex, deleted);
+            // todo：更新公式，合并单元格等信息
+            this.render();
+            console.log('data', this.originData);
+        }
+    }, {
+        key: 'stringify',
+        value: function stringify(data) {
+            switch (typeof data === 'undefined' ? 'undefined' : _typeof(data)) {
+                case 'string':
+                case 'number':
+                    return data;
+                case 'undefined':
+                    return '';
+                default:
+                    if (data === null) {
+                        return '';
+                    }
+                    return JSON.stringify(data);
+            }
         }
     }, {
         key: 'update',
         value: function update() {
             this.emit('change', this.originData);
             this.emit('update', this.originData);
+        }
+        // 重新绘制表格
+
+    }, {
+        key: 'render',
+        value: function render() {
+            this.table.render();
         }
         // 设置单元格数据
 
@@ -299,9 +358,13 @@ var TableEditor = function (_EventEmitter) {
             var data = this.originData[row] ? this.originData[row][col] : null;
             if (data && data[0] === '{') {
                 var d = this.JSONParse(data);
-                cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(d) };
-                cellMeta.editor = false;
-                // cellMeta.readOnly = true
+                if ((typeof d === 'undefined' ? 'undefined' : _typeof(d)) === 'object') {
+                    cellMeta.comment = { value: getCellName(row, col) + '\n' + this.getObjectComment(d) };
+                    cellMeta.editor = ObjectEditor;
+                    if (d.readOnly || d.disabled) {
+                        cellMeta.readOnly = true;
+                    }
+                }
             } else if (data && data[0] === '=') {
                 cellMeta.comment = { value: data };
             }
@@ -317,11 +380,20 @@ var TableEditor = function (_EventEmitter) {
             var showValue = null;
             if (data && data[0] === '{') {
                 var d = this.JSONParse(data);
-                className = 'object';
-                if (this.options.objectRender) {
-                    showValue = this.options.objectRender(d, row, col);
+                if (typeof d === 'string') {
+                    showValue = d;
                 } else {
-                    showValue = d.name;
+                    className = 'object';
+                    if (d.className) {
+                        className += ' ' + d.className;
+                    }
+                    if (this.options.objectRender) {
+                        showValue = this.options.objectRender(d, row, col);
+                    } else {
+                        showValue = [d.name, d.value].filter(function (v) {
+                            return typeof v !== 'undefined';
+                        }).join(':');
+                    }
                 }
             } else if (data && data[0] === '=') {
                 var result = this.parser(data.substr(1));
@@ -342,9 +414,7 @@ var TableEditor = function (_EventEmitter) {
         key: 'JSONParse',
         value: function JSONParse(str) {
             try {
-                var data = str.origin || JSON.parse(str);
-                str.origin = data;
-                return data;
+                return JSON.parse(str);
             } catch (err) {
                 console.error('JSON.parse Error', err, str);
             }
@@ -355,7 +425,7 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'parser',
         value: function parser(formula) {
-            var _this4 = this;
+            var _this5 = this;
 
             var alias = this.alias;
             if (alias) {
@@ -370,12 +440,12 @@ var TableEditor = function (_EventEmitter) {
                 formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, function (all, col, row, attr) {
                     col = getColByColName(col);
                     row = parseInt(row, 10) - 1;
-                    var rowData = _this4.originData[row];
+                    var rowData = _this5.originData[row];
                     if (rowData) {
                         // console.log('rowData:', rowData)
                         var data = rowData[col];
                         if (data && data[0] === '{') {
-                            data = _this4.JSONParse(data);
+                            data = _this5.JSONParse(data);
                         }
                         return data[attr] || 0;
                     }
@@ -400,12 +470,12 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'getDataWithFormat',
         value: function getDataWithFormat() {
-            var _this5 = this;
+            var _this6 = this;
 
             var metas = [];
 
             var _loop = function _loop(i) {
-                _this5.table.getCellMetaAtRow(i).forEach(function (v, col) {
+                _this6.table.getCellMetaAtRow(i).forEach(function (v, col) {
                     if (v.className) {
                         metas.push({ row: i, col: col, meta: { className: v.className } });
                     }
