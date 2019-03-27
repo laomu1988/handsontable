@@ -12,14 +12,17 @@ var data = [
     ['不存在的属性', '=B4.notExist'],
     ['公式套公式', '=B5 + 10', {$prop: 'name'}],
     ['公式SUM', '=SUM(B2:C2)'],
-    ['编辑value', {prop: 'name', value: 1, copyable: false}],
+    ['对象编辑', {prop: 'name', value: 1, copyable: false}],
     ['禁止编辑', {prop: 'name', value: '12', readOnly: true}],
+    ['禁止复制', {prop: 'name', value: '12', copyable: false}],
+    ['当前时间', {prop: '', value: '12'}],
 ]
 
 var container = document.getElementById('table')
-var hot = new Tabel({
+var options = {
     dom: container,
     data: data,
+    disabled: true,
     // 属性别名
     propAlias: {
         'value': '值'
@@ -34,7 +37,8 @@ var hot = new Tabel({
     metas: [
         {row: 0, col: 0, meta: {className: 'htRight'}}
     ],
-})
+};
+var hot = new Tabel(options)
 
 // 需要选择数据时触发
 hot.on('dblclick-object', function(row, col, data) {
@@ -66,12 +70,10 @@ addListener('#deleteLine', () => {
     hot.deleteRow(0);
 })
 
-
-document
-    .getElementById('disable')
-    .addEventListener('click', function() {
-        console.log('disable');
-    }, false)
+addListener('#disabled', () => {
+    options.disabled = !options.disabled;
+    hot.updateSettings();
+})
 
 window.table = hot.table
 

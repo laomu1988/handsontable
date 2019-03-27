@@ -173,6 +173,7 @@ class TableEditor extends EventEmitter {
             manualColumnResize: true, // 调整列宽度
             cells: this.getCellProp.bind(me), // this.cells,
             comments: true, // 展示注释
+            readOnly: !!this.options.disabled,
             afterChange() {
                 // console.log('afterChange:', me.originData)
                 me.update();
@@ -223,11 +224,16 @@ class TableEditor extends EventEmitter {
                 this.table.setCellMetaObject(v.row, v.col, v.meta);
             });
         }
+        this.updateSettings();
+    }
+    updateSettings() {
+        // 可编辑时才添加菜单
         this.table.updateSettings({
-            contextMenu: {
+            readOnly: !!this.options.disabled,
+            contextMenu: this.options.disabled ? false : {
                 items: menu
             }
-        })
+        });
     }
     insertRow(rowIndex, array) {
         this.table.alter('insert_row', rowIndex, 1);
