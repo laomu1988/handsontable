@@ -182,15 +182,21 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'createTable',
         value: function createTable() {
-            var _this3 = this;
-
+            this.table = new Handsontable(this.dom, this.getTableConfig());
+            this.updateSettings();
+        }
+    }, {
+        key: 'getTableConfig',
+        value: function getTableConfig() {
             var me = this;
-            // 渲染表格
             var defaultConfig = {
                 rowHeaders: true,
                 colHeaders: true,
                 mergeCells: this.mergeCells, // 合并单元格
-                contextMenu: true, // 右键菜单
+                // 右键菜单
+                contextMenu: this.options.disabled ? false : {
+                    items: menu
+                },
                 manualRowResize: true, // 调整行高度
                 manualColumnResize: true, // 调整列宽度
                 cells: this.getCellProp.bind(me), // this.cells,
@@ -244,24 +250,20 @@ var TableEditor = function (_EventEmitter) {
                 minSpareRows: 1
             };
             var config = Object.assign({}, defaultConfig, this.options.config, { data: this.originData });
-            this.table = new Handsontable(this.dom, config);
+            return config;
+        }
+    }, {
+        key: 'updateSettings',
+        value: function updateSettings() {
+            var _this3 = this;
+
+            // 可编辑时才添加菜单
+            this.table.updateSettings(this.getTableConfig());
             if (this.options.metas && this.options.metas.length > 0) {
                 this.options.metas.forEach(function (v) {
                     _this3.table.setCellMetaObject(v.row, v.col, v.meta);
                 });
             }
-            this.updateSettings();
-        }
-    }, {
-        key: 'updateSettings',
-        value: function updateSettings() {
-            // 可编辑时才添加菜单
-            this.table.updateSettings({
-                readOnly: !!this.options.disabled,
-                contextMenu: this.options.disabled ? false : {
-                    items: menu
-                }
-            });
         }
     }, {
         key: 'insertRow',

@@ -162,13 +162,19 @@ class TableEditor extends EventEmitter {
         this.formulaParser = parser;
     }
     createTable() {
+        this.table = new Handsontable(this.dom, this.getTableConfig())
+        this.updateSettings();
+    }
+    getTableConfig() {
         let me = this;
-        // 渲染表格
         var defaultConfig = {
             rowHeaders: true,
             colHeaders: true,
             mergeCells: this.mergeCells, // 合并单元格
-            contextMenu: true, // 右键菜单
+            // 右键菜单
+            contextMenu: this.options.disabled ? false : {
+                items: menu
+            }, 
             manualRowResize: true, // 调整行高度
             manualColumnResize: true, // 调整列宽度
             cells: this.getCellProp.bind(me), // this.cells,
@@ -217,23 +223,17 @@ class TableEditor extends EventEmitter {
             },
             minSpareRows: 1
         }
-        let config = Object.assign({}, defaultConfig, this.options.config, {data: this.originData})
-        this.table = new Handsontable(this.dom, config)
+        let config = Object.assign({}, defaultConfig, this.options.config, {data: this.originData});
+        return config;
+    }
+    updateSettings() {
+        // 可编辑时才添加菜单
+        this.table.updateSettings(this.getTableConfig());
         if (this.options.metas && this.options.metas.length > 0) {
             this.options.metas.forEach(v => {
                 this.table.setCellMetaObject(v.row, v.col, v.meta);
             });
         }
-        this.updateSettings();
-    }
-    updateSettings() {
-        // 可编辑时才添加菜单
-        this.table.updateSettings({
-            readOnly: !!this.options.disabled,
-            contextMenu: this.options.disabled ? false : {
-                items: menu
-            }
-        });
     }
     insertRow(rowIndex, array) {
         this.table.alter('insert_row', rowIndex, 1);
