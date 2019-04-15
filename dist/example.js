@@ -1,6 +1,6 @@
 require('./style.less');
 var Tabel = require('./table.js');
-var data = [['说明', '内容', null], ['数据', 10, 11], ['字符串', 'AAA', { name: 1 }], ['对象', { name: '对象A', value: 123, hide: false }, { name: '对象B', value: 133 }], ['公式', '=B2+C2'], ['错误示例', '=B1+B2'], ['对象属性计算', '=B4.value + 1'], ['别名计算示例', '=B4.值 + 1'], ['不存在的属性', '=B4.notExist'], ['公式套公式', '=B5 + 10', { $prop: 'name' }], ['公式SUM', '=SUM(B2:C2)'], ['对象编辑', { prop: 'name', value: 1, copyable: false }], ['禁止编辑', { prop: 'name', value: '12', readOnly: true }], ['禁止复制', { prop: 'name', value: '12', copyable: false }], ['当前时间', { prop: '', value: '12' }]];
+var data = [['说明', '内容', null], ['数据', 10, 11], ['字符串', 'AAA', { name: 1 }], ['对象', { name: '对象A', value: 123, hide: false }, { name: '对象B', value: 133 }], ['公式', '=B2+C2'], ['错误示例', '=B1+B2'], ['对象属性计算', '=B4.value + 1'], ['别名计算示例', '=B4.值 + 1'], ['不存在的属性', '=B4.notExist'], ['公式套公式', '=B5 + 10', { $prop: 'name' }], ['公式SUM', '=SUM(B2:C2)'], ['对象编辑', { prop: 'name', value: 1, copyable: false }], ['禁止编辑', { prop: 'name', value: '12', readOnly: true }], ['禁止复制', { prop: 'name', value: '12', copyable: false }], ['当前时间', { prop: '', value: '12' }], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['1'], ['end']];
 
 var container = document.getElementById('table');
 var options = {

@@ -168,6 +168,7 @@ class TableEditor extends EventEmitter {
     getTableConfig() {
         let me = this;
         var defaultConfig = {
+            renderAllRows: true,
             rowHeaders: true,
             colHeaders: true,
             mergeCells: this.mergeCells, // 合并单元格
@@ -175,8 +176,8 @@ class TableEditor extends EventEmitter {
             contextMenu: this.options.disabled ? false : {
                 items: menu
             }, 
-            manualRowResize: true, // 调整行高度
-            manualColumnResize: true, // 调整列宽度
+            manualRowResize: this.options.disabled ? false : true, // 调整行高度
+            manualColumnResize: this.options.disabled ? false : true, // 调整列宽度
             cells: this.getCellProp.bind(me), // this.cells,
             comments: true, // 展示注释
             readOnly: !!this.options.disabled,
@@ -405,6 +406,7 @@ class TableEditor extends EventEmitter {
     }
     // 取得编辑数据
     getData() {
+        this.originData = this.table.getData();
         return this.originData
     }
     // 获取包含样式部分的数据

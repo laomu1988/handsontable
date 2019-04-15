@@ -36,12 +36,12 @@
  * Handsontable ContextMenu
  */.htContextMenu{display:none;position:absolute;z-index:10}.htContextMenu .ht_clone_corner,.htContextMenu .ht_clone_debug,.htContextMenu .ht_clone_left,.htContextMenu .ht_clone_top{display:none}.htContextMenu table.htCore{border:1px solid #ccc;border-bottom-width:2px;border-right-width:2px}.htContextMenu .wtBorder{visibility:hidden}.htContextMenu table tbody tr td{background:#fff;border-width:0;padding:4px 6px 0;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.htContextMenu table tbody tr td:first-child{border:0}.htContextMenu table tbody tr td.htDimmed{font-style:normal;color:#323232}.htContextMenu table tbody tr td.current,.htContextMenu table tbody tr td.zeroclipboard-is-hover{background:#f3f3f3}.htContextMenu table tbody tr td.htSeparator{border-top:1px solid #bbb;height:0;padding:0;cursor:default}.htContextMenu table tbody tr td.htDisabled{color:#999;cursor:default}.htContextMenu table tbody tr td.htDisabled:hover{background:#fff;color:#999;cursor:default}.htContextMenu table tbody tr.htHidden{display:none}.htContextMenu table tbody tr td .htItemWrapper{margin-left:10px;margin-right:6px}.htContextMenu table tbody tr td div span.selected{margin-top:-2px;position:absolute;left:4px}.htContextMenu .ht_master .wtHolder{overflow:hidden}textarea#HandsontableCopyPaste{position:fixed!important;top:0!important;right:100%!important;overflow:hidden;opacity:0;outline:0 none!important}.htRowHeaders .ht_master.innerBorderLeft~.ht_clone_left td:first-of-type,.htRowHeaders .ht_master.innerBorderLeft~.ht_clone_top_left_corner th:nth-child(2){border-left:0 none}.handsontable.ht__manualColumnMove.after-selection--columns thead th.ht__highlight{cursor:move;cursor:-webkit-grab;cursor:grab}.handsontable.ht__manualColumnMove.on-moving--columns,.handsontable.ht__manualColumnMove.on-moving--columns thead th.ht__highlight{cursor:move;cursor:-webkit-grabbing;cursor:grabbing}.handsontable.ht__manualColumnMove.on-moving--columns .manualColumnResizer{display:none}.handsontable .ht__manualColumnMove--backlight,.handsontable .ht__manualColumnMove--guideline{position:absolute;height:100%;display:none}.handsontable .ht__manualColumnMove--guideline{background:#757575;width:2px;top:0;margin-left:-1px;z-index:5}.handsontable .ht__manualColumnMove--backlight{background:#343434;background:rgba(52,52,52,.25);display:none;z-index:5;pointer-events:none}.handsontable.on-moving--columns .ht__manualColumnMove--backlight,.handsontable.on-moving--columns.show-ui .ht__manualColumnMove--guideline{display:block}.handsontable .wtHider{position:relative}.handsontable.ht__manualRowMove.after-selection--rows tbody th.ht__highlight{cursor:move;cursor:-webkit-grab;cursor:grab}.handsontable.ht__manualRowMove.on-moving--rows,.handsontable.ht__manualRowMove.on-moving--rows tbody th.ht__highlight{cursor:move;cursor:-webkit-grabbing;cursor:grabbing}.handsontable.ht__manualRowMove.on-moving--rows .manualRowResizer{display:none}.handsontable .ht__manualRowMove--backlight,.handsontable .ht__manualRowMove--guideline{position:absolute;width:100%;display:none}.handsontable .ht__manualRowMove--guideline{background:#757575;height:2px;left:0;margin-top:-1px;z-index:5}.handsontable .ht__manualRowMove--backlight{background:#343434;background:rgba(52,52,52,.25);display:none;z-index:5;pointer-events:none}.handsontable.on-moving--rows .ht__manualRowMove--backlight,.handsontable.on-moving--rows.show-ui .ht__manualRowMove--guideline{display:block}.handsontable.ht__selection--columns tbody td[colspan][class*=area][class*=highlight]:before,.handsontable.ht__selection--rows tbody td[rowspan][class*=area][class*=highlight]:before{background:inherit}
 .handsontable {
-  display: inline-block;
+  display: block;
   /* 自选对象 */
 }
 .handsontable .ht_master,
 .handsontable .wtHolder {
-  display: inline-block;
+  display: block;
 }
 .handsontable .formula {
   /* box-shadow: inset 0 0 0px 1px #ff0000;
@@ -55,6 +55,10 @@
   background: #0e0;
   color: #333;
   font-weight: 700;
+}
+.handsontable .wtHolder {
+  height: auto !important;
+  width: auto !important;
 }
 .handsontable .htContextMenu {
   z-index: 9999;

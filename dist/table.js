@@ -190,6 +190,7 @@ var TableEditor = function (_EventEmitter) {
         value: function getTableConfig() {
             var me = this;
             var defaultConfig = {
+                renderAllRows: true,
                 rowHeaders: true,
                 colHeaders: true,
                 mergeCells: this.mergeCells, // 合并单元格
@@ -197,8 +198,8 @@ var TableEditor = function (_EventEmitter) {
                 contextMenu: this.options.disabled ? false : {
                     items: menu
                 },
-                manualRowResize: true, // 调整行高度
-                manualColumnResize: true, // 调整列宽度
+                manualRowResize: this.options.disabled ? false : true, // 调整行高度
+                manualColumnResize: this.options.disabled ? false : true, // 调整列宽度
                 cells: this.getCellProp.bind(me), // this.cells,
                 comments: true, // 展示注释
                 readOnly: !!this.options.disabled,
@@ -465,6 +466,7 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'getData',
         value: function getData() {
+            this.originData = this.table.getData();
             return this.originData;
         }
         // 获取包含样式部分的数据
