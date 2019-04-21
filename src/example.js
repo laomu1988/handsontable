@@ -34,8 +34,8 @@ var options = {
     mergeCells: [
         {row: 0, col: 1, rowspan: 1, colspan: 2}
     ],
-    metas: [
-        {row: 0, col: 0, meta: {className: 'htRight'}}
+    cell: [
+        {row: 0, col: 0, className: 'htRight'}
     ],
 };
 var hot = new Tabel(options)

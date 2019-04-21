@@ -61,12 +61,22 @@ class TableEditor extends EventEmitter {
             ['', '', '', '', ''],
             ['', '', '', '', ''],
         ]
+        this.ready = false;
         this.options = options
         this.dom = options.dom
         this.formulaParser = null // 公式计算实例
         this.table = null // hansontable编辑实例
         this.mergeCells = options.mergeCells || data.mergeCells || []
         options.metas = options.metas || data.metas || []
+        if (options.metas && !options.cell) {
+            options.cell = options.metas.map(v => {
+                return {
+                    row: v.row,
+                    col: v.col,
+                    className: v.meta.className
+                }
+            })
+        }
         this.errorFields = []
         this.createFormulaParser()
 
@@ -179,37 +189,18 @@ class TableEditor extends EventEmitter {
             manualRowResize: this.options.disabled ? false : true, // 调整行高度
             manualColumnResize: this.options.disabled ? false : true, // 调整列宽度
             cells: this.getCellProp.bind(me), // this.cells,
+            cell: this.options.cell || [],
             comments: true, // 展示注释
             readOnly: !!this.options.disabled,
             afterChange() {
-                // console.log('afterChange:', me.originData)
                 me.update();
             },
             afterSelectionEnd(row, col, row2, col2) {
-                // console.log('selection', row, col, row2, col2)
+                me.ready = true;
                 me.emit('selection', row, col, row2, col2)
                 if (row2 === row && col2 === col) {
                     me.emit('select-cell', row, col)
                 }
-            },
-            afterMergeCells(cellRange) {
-                console.log('mergeCell:', cellRange)
-                let from = cellRange.from
-                let to = cellRange.to
-                let cell = me.mergeCells.find(v => v.row === from.row && v.col === from.col);
-                if (!cell) {
-                    me.mergeCells.push({
-                        row: from.row,
-                        col: from.col,
-                        rowspan: to.row - from.row + 1,
-                        colspan: to.col - from.col + 1,
-                    });
-                }
-                else {
-                    cell.rowspan = to.row - from.row + 1
-                    cell.colspan = to.col - from.col + 1
-                }
-                me.update()
             },
             afterUnmergeCells(cellRange) {
                 let from = cellRange.from;
@@ -219,7 +210,8 @@ class TableEditor extends EventEmitter {
                 }
                 me.update()
             },
-            afterSetCellMeta() {
+            afterSetCellMeta(row, col, key, value) {
+                // console.log('cell-meta:', row, col, key, value);
                 me.update()
             },
             minSpareRows: 1
@@ -244,7 +236,6 @@ class TableEditor extends EventEmitter {
             this.table.setDataAtCell(rowIndex, col, this.stringify(value));
         })
         this.render();
-        console.log('data', this.originData)
     }
     deleteRow(rowIndex, deleted = 1) {
         this.table.alter('remove_row', rowIndex, deleted);
@@ -267,8 +258,11 @@ class TableEditor extends EventEmitter {
         }
     }
     update() {
-        this.emit('change', this.originData)
-        this.emit('update', this.originData)
+        if (this.ready) {
+            console.log('change');
+            this.emit('change', this.originData)
+            this.emit('update', this.originData)
+        }
     }
     // 重新绘制表格
     render() {
@@ -328,6 +322,8 @@ class TableEditor extends EventEmitter {
         let data = this.originData[row] ? this.originData[row][col] : null
         let className = null
         let showValue = null
+        td.setAttribute('row', row);
+        td.setAttribute('col', col);
         if(data && data[0] === '{') {
             let d = this.JSONParse(data)
             if (typeof d === 'string') {
@@ -411,18 +407,30 @@ class TableEditor extends EventEmitter {
     }
     // 获取包含样式部分的数据
     getDataWithFormat() {
-        let metas = []
+        let cell = []
         for(let i = 0; i < this.originData.length; i++) {
-            this.table.getCellMetaAtRow(i).forEach((v, col) => {
-                if (v.className) {
-                    metas.push({row: i, col, meta: {className: v.className}})
-                }
-            })
+            let meta = this.table.getCellMetaAtRow(i);
+            if (meta) {
+                meta.forEach(v => {
+                    if (v.className) {
+                        cell.push({row: v.row, col: v.col, className: v.className.trim()})
+                    }
+                })
+            }
         }
+        let tds = [...this.dom.querySelectorAll('[rowspan][colspan]')];
+        let merges = tds.map(td => {
+            return {
+                row: parseInt(td.getAttribute('row')),
+                col: parseInt(td.getAttribute('col')),
+                rowspan: parseInt(td.getAttribute('rowspan')),
+                colspan: parseInt(td.getAttribute('colspan')),
+            }
+        });
         let data = {
             data: this.originData,
-            mergeCells: this.mergeCells,
-            metas
+            mergeCells: merges,
+            cell
         }
         return data;
     }
