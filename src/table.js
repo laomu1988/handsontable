@@ -5,6 +5,20 @@ const EventEmitter = require('eventemitter3');
 const Handsontable = require('handsontable/dist/handsontable.full.min.js')
 const FormulaParser = require('hot-formula-parser').Parser
 const ObjectEditor = require('./object_editor');
+
+const colors = [
+    'red',
+    'white',
+    'black',
+    'green',
+    'yellow',
+    'blue',
+    'purple',
+    'gray',
+    'brown',
+    'tan',
+];
+
 const menu = {
     row_above: {name: '上面添加行'},
     row_below: {name: '下面添加行'},
@@ -18,7 +32,7 @@ const menu = {
     undo: {name: '撤销'},
     redo: {name: '重做'},
     hsep4: '---------',
-    make_read_only: {name: '只读'},
+    // make_read_only: {name: '只读'},
     alignment: {
         name: '对齐方式',
         // submenu: {
@@ -37,8 +51,62 @@ const menu = {
     },
     // borders: {name: '边框'},
     hsep5: '---------',
-    commentsAddEdit: {name: '编辑注释'},
-    commentsRemove: {name: '移除注释'}
+    // commentsAddEdit: {name: '编辑注释'},
+    // commentsRemove: {name: '移除注释'},
+    "bgcolor": { 
+        name: '背景色',
+        submenu: {
+            items: colors.map(v => {
+                return {
+                    key: 'bgcolor:' + v,
+                    name: v,
+                    callback: onClickMenu,
+                    renderer: colorMenuRender
+                }
+            })
+        }
+    },
+    "color": {
+        name: '文字颜色',
+        submenu: {
+            items: colors.map(v => {
+                return {
+                    key: 'color:' + v,
+                    name: v,
+                    callback: onClickMenu,
+                    renderer: colorMenuRender
+                }
+            })
+        }
+    },
+}
+
+function onClickMenu(key, selection) {
+    console.error(key, selection);
+    if (!selection || !selection[0] || !selection[0].start) {
+        console.error('未知动作', key, selection);
+    }
+    let classPre = key.substring(0, key.indexOf(':'));
+    let newClassName = key.replace(':', '-');
+    let start = selection[0].start;
+    let end = selection[0].end;
+    let reg = new RegExp('\\b' + classPre + '-\w+\\b', 'g');
+    for(let row = start.row; row <= end.row; row ++) {
+        for(let col = start.col; col <= end.col; col ++) {
+            let meta = this.getCellMeta(row, col);
+            let className = meta.className || '';
+            className = className.replace(reg, '').trim() + ' ' + newClassName;
+            this.setCellMetaObject(row, col, {className})
+        }
+    }
+    this.render();
+}
+
+function colorMenuRender() {
+    var elem = document.createElement('div');
+    elem.classList.add(this.key.replace(':', '-'));
+    elem.textContent = this.name;
+    return elem;
 }
 
 /**
@@ -103,6 +171,7 @@ class TableEditor extends EventEmitter {
         }
         this.createTable()
         this.dom.addEventListener('dblclick', this.onDblclick.bind(this), false)
+        writeColorClass(colors);
     }
     onDblclick(e) {
         let target = e.target || {}
@@ -192,6 +261,12 @@ class TableEditor extends EventEmitter {
             cell: this.options.cell || [],
             comments: true, // 展示注释
             readOnly: !!this.options.disabled,
+            afterRemoveCol() {
+                me.update();
+            },
+            afterRemoveRow() {
+                me.update();
+            },
             afterChange() {
                 me.update();
             },
@@ -259,9 +334,10 @@ class TableEditor extends EventEmitter {
     }
     update() {
         if (this.ready) {
-            console.log('change');
-            this.emit('change', this.originData)
-            this.emit('update', this.originData)
+            setTimeout(() => {
+                this.emit('change', this.originData)
+                this.emit('update', this.originData)
+            }, 4);
         }
     }
     // 重新绘制表格
@@ -484,6 +560,19 @@ function getCellName(row, col) {
 
 function isObject(data) {
     return data && typeof data === 'object' && data + '' === '[object Object]'
+}
+
+
+function writeColorClass(colors) {
+    let style = '';
+    colors.forEach(color => {
+        style += `.bgcolor-${color} {background-color: ${color} !important;} \n.color-${color} {color: ${color} !important;}\n`;
+    });
+    let dom = document.createElement('style');
+    dom.setAttribute("type", "text/css");
+    dom.innerHTML = style;
+    console.log('writeStyle:', style);
+    document.querySelector('head').appendChild(dom);
 }
 
 module.exports = TableEditor
