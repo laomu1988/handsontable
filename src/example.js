@@ -62,6 +62,10 @@ hot.on('update-attr', function(data) {
     console.log('update:', data);
 })
 
+hot.on('error', function(messgae) {
+    alert(messgae);
+});
+
 addListener('#addLine', () => {
     let data = hot.getData();
     let addData = data[0].map(v => v);

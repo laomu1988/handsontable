@@ -166,6 +166,7 @@ class TableEditor extends EventEmitter {
         this.errorFields = []
         // 公式计算实例
         this.formulaParser = new FormulaParser(this);
+        this.formulaParser.on('error', error => this.emit('error', error)); // 抛出错误
 
         // 转换object对象为字符串
         if (this.originData && this.originData.length > 0) {

@@ -10,6 +10,7 @@ module.exports = class Formula extends FormulaParser {
         super();
         this.table = table;
         this.parserIndexes = {};
+        this.timerIndexes = {};
 
         // 计算数据
         // this.on('callVariable', (name, done) => {
@@ -47,13 +48,20 @@ module.exports = class Formula extends FormulaParser {
             let indexes = cellCoord.row.index + '_' + cellCoord.column.index;
             this.parserIndexes[indexes] = this.parserIndexes[indexes] || 0;
             this.parserIndexes[indexes] += 1;
-            // if (this.parserIndexes[indexes] > 1000) {
-            //     let message = '计算公式存在循环'
-            //         + (cellCoord.row.index + 1) + '行'
-            //         + (cellCoord.column.index + 1) + '列';
-            //     console.error(message);
-            //     throw new Error(message);
-            // }
+            if (this.parserIndexes[indexes] > 1000) {
+                let message = '计算公式存在循环'
+                    + (cellCoord.row.index + 1) + '行'
+                    + (cellCoord.column.index + 1) + '列';
+                console.error(message);
+                this.emit('error', message);
+                throw new Error(message);
+            }
+            if (this.timerIndexes[indexes]) {
+                clearTimeout(this.timerIndexes[indexes]);
+            }
+            this.timerIndexes[indexes] = setTimeout(() => {
+                delete this.parserIndexes[indexes];
+            }, 1000);
             if (data && data[0] === '=') {
                 let result = this.parse(data.substr(1))
                 if (result.error) {
