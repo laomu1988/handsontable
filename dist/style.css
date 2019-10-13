@@ -63,3 +63,6 @@
 .handsontable .htContextMenu {
   z-index: 9999;
 }
+.handsontable td {
+  white-space: pre-wrap;
+}

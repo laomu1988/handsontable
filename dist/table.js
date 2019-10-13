@@ -2,6 +2,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -15,6 +17,9 @@ var EventEmitter = require('eventemitter3');
 var Handsontable = require('handsontable/dist/handsontable.full.min.js');
 var FormulaParser = require('hot-formula-parser').Parser;
 var ObjectEditor = require('./object_editor');
+
+var colors = ['red', 'white', 'black', 'green', 'yellow', 'blue', 'purple', 'gray', 'brown', 'tan'];
+
 var menu = {
     row_above: { name: '上面添加行' },
     row_below: { name: '下面添加行' },
@@ -28,7 +33,7 @@ var menu = {
     undo: { name: '撤销' },
     redo: { name: '重做' },
     hsep4: '---------',
-    make_read_only: { name: '只读' },
+    // make_read_only: {name: '只读'},
     alignment: {
         name: '对齐方式'
         // submenu: {
@@ -47,21 +52,76 @@ var menu = {
     },
     // borders: {name: '边框'},
     hsep5: '---------',
-    commentsAddEdit: { name: '编辑注释' },
-    commentsRemove: { name: '移除注释' }
-
-    /**
-     * 新建一个hansontable编辑区
-     * @param {Object} options 
-     * @param {DOM} options.dom 编辑区所在dom
-     * @param {Array} options.data 编辑区使用的数据
-     * @param {Object} options.config 覆盖handsontable默认配置
-     * @param {Object} options.disabled 是否禁止编辑，默认false
-     * @param {Object} options.propAlias 属性的中文别名
-     * @param {Object} options.commentNeedAlias 只有指定了别名，对象的属性才会展示在注释中，避免注释内容过多, 默认false
-     * @param {Function} options.objectRender(obj) 当是Object对象时，转换为stirng展示在输入框中
-     */
+    // commentsAddEdit: {name: '编辑注释'},
+    // commentsRemove: {name: '移除注释'},
+    "bgcolor": {
+        name: '背景色',
+        submenu: {
+            items: colors.map(function (v) {
+                return {
+                    key: 'bgcolor:' + v,
+                    name: v,
+                    callback: onClickMenu,
+                    renderer: colorMenuRender
+                };
+            })
+        }
+    },
+    "color": {
+        name: '文字颜色',
+        submenu: {
+            items: colors.map(function (v) {
+                return {
+                    key: 'color:' + v,
+                    name: v,
+                    callback: onClickMenu,
+                    renderer: colorMenuRender
+                };
+            })
+        }
+    }
 };
+
+function onClickMenu(key, selection) {
+    console.log('单元格颜色', key, selection);
+    if (!selection || !selection[0] || !selection[0].start) {
+        console.error('未知动作', key, selection);
+    }
+    var classPre = key.substring(0, key.indexOf(':'));
+    var newClassName = key.replace(':', '-');
+    var start = selection[0].start;
+    var end = selection[0].end;
+    var reg = new RegExp('\\b' + classPre + '-\\w+\\b', 'g');
+    for (var row = start.row; row <= end.row; row++) {
+        for (var col = start.col; col <= end.col; col++) {
+            var meta = this.getCellMeta(row, col);
+            var className = meta.className || '';
+            className = className.replace(reg, '').trim() + ' ' + newClassName;
+            this.setCellMetaObject(row, col, { className: className });
+        }
+    }
+    this.render();
+}
+
+function colorMenuRender() {
+    var elem = document.createElement('div');
+    elem.classList.add(this.key.replace(':', '-'));
+    elem.textContent = this.name;
+    return elem;
+}
+
+/**
+ * 新建一个hansontable编辑区
+ * @param {Object} options 
+ * @param {DOM} options.dom 编辑区所在dom
+ * @param {Array} options.data 编辑区使用的数据
+ * @param {Object} options.config 覆盖handsontable默认配置
+ * @param {Object} options.disabled 是否禁止编辑，默认false
+ * @param {Object} options.propAlias 属性的中文别名
+ * @param {Object} options.commentNeedAlias 只有指定了别名，对象的属性才会展示在注释中，避免注释内容过多, 默认false
+ * @param {Function} options.objectRender(obj) 当是Object对象时，转换为stirng展示在输入框中
+ */
+
 var TableEditor = function (_EventEmitter) {
     _inherits(TableEditor, _EventEmitter);
 
@@ -72,12 +132,22 @@ var TableEditor = function (_EventEmitter) {
 
         var data = options.data || {};
         _this.originData = data instanceof Array ? data : data.data || [['', '', '', '', ''], ['', '', '', '', ''], ['', '', '', '', '']];
+        _this.ready = false;
         _this.options = options;
         _this.dom = options.dom;
         _this.formulaParser = null; // 公式计算实例
         _this.table = null; // hansontable编辑实例
         _this.mergeCells = options.mergeCells || data.mergeCells || [];
         options.metas = options.metas || data.metas || [];
+        if (options.metas && !options.cell) {
+            options.cell = options.metas.map(function (v) {
+                return {
+                    row: v.row,
+                    col: v.col,
+                    className: v.meta.className
+                };
+            });
+        }
         _this.errorFields = [];
         _this.createFormulaParser();
 
@@ -104,6 +174,7 @@ var TableEditor = function (_EventEmitter) {
         }
         _this.createTable();
         _this.dom.addEventListener('dblclick', _this.onDblclick.bind(_this), false);
+        writeColorClass(colors);
         return _this;
     }
 
@@ -201,38 +272,24 @@ var TableEditor = function (_EventEmitter) {
                 manualRowResize: this.options.disabled ? false : true, // 调整行高度
                 manualColumnResize: this.options.disabled ? false : true, // 调整列宽度
                 cells: this.getCellProp.bind(me), // this.cells,
+                cell: this.options.cell || [],
                 comments: true, // 展示注释
                 readOnly: !!this.options.disabled,
+                afterRemoveCol: function afterRemoveCol() {
+                    me.update();
+                },
+                afterRemoveRow: function afterRemoveRow() {
+                    me.update();
+                },
                 afterChange: function afterChange() {
-                    // console.log('afterChange:', me.originData)
                     me.update();
                 },
                 afterSelectionEnd: function afterSelectionEnd(row, col, row2, col2) {
-                    // console.log('selection', row, col, row2, col2)
+                    me.ready = true;
                     me.emit('selection', row, col, row2, col2);
                     if (row2 === row && col2 === col) {
                         me.emit('select-cell', row, col);
                     }
-                },
-                afterMergeCells: function afterMergeCells(cellRange) {
-                    console.log('mergeCell:', cellRange);
-                    var from = cellRange.from;
-                    var to = cellRange.to;
-                    var cell = me.mergeCells.find(function (v) {
-                        return v.row === from.row && v.col === from.col;
-                    });
-                    if (!cell) {
-                        me.mergeCells.push({
-                            row: from.row,
-                            col: from.col,
-                            rowspan: to.row - from.row + 1,
-                            colspan: to.col - from.col + 1
-                        });
-                    } else {
-                        cell.rowspan = to.row - from.row + 1;
-                        cell.colspan = to.col - from.col + 1;
-                    }
-                    me.update();
                 },
                 afterUnmergeCells: function afterUnmergeCells(cellRange) {
                     var from = cellRange.from;
@@ -244,7 +301,8 @@ var TableEditor = function (_EventEmitter) {
                     }
                     me.update();
                 },
-                afterSetCellMeta: function afterSetCellMeta() {
+                afterSetCellMeta: function afterSetCellMeta(row, col, key, value) {
+                    // console.log('cell-meta:', row, col, key, value);
                     me.update();
                 },
 
@@ -278,7 +336,6 @@ var TableEditor = function (_EventEmitter) {
                 _this4.table.setDataAtCell(rowIndex, col, _this4.stringify(value));
             });
             this.render();
-            console.log('data', this.originData);
         }
     }, {
         key: 'deleteRow',
@@ -309,8 +366,14 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'update',
         value: function update() {
-            this.emit('change', this.originData);
-            this.emit('update', this.originData);
+            var _this5 = this;
+
+            if (this.ready) {
+                setTimeout(function () {
+                    _this5.emit('change', _this5.originData);
+                    _this5.emit('update', _this5.originData);
+                }, 4);
+            }
         }
         // 重新绘制表格
 
@@ -381,6 +444,8 @@ var TableEditor = function (_EventEmitter) {
             var data = this.originData[row] ? this.originData[row][col] : null;
             var className = null;
             var showValue = null;
+            td.setAttribute('row', row);
+            td.setAttribute('col', col);
             if (data && data[0] === '{') {
                 var d = this.JSONParse(data);
                 if (typeof d === 'string') {
@@ -428,7 +493,7 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'parser',
         value: function parser(formula) {
-            var _this5 = this;
+            var _this6 = this;
 
             var alias = this.alias;
             if (alias) {
@@ -443,12 +508,12 @@ var TableEditor = function (_EventEmitter) {
                 formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, function (all, col, row, attr) {
                     col = getColByColName(col);
                     row = parseInt(row, 10) - 1;
-                    var rowData = _this5.originData[row];
+                    var rowData = _this6.originData[row];
                     if (rowData) {
                         // console.log('rowData:', rowData)
                         var data = rowData[col];
                         if (data && data[0] === '{') {
-                            data = _this5.JSONParse(data);
+                            data = _this6.JSONParse(data);
                         }
                         return data[attr] || 0;
                     }
@@ -474,25 +539,30 @@ var TableEditor = function (_EventEmitter) {
     }, {
         key: 'getDataWithFormat',
         value: function getDataWithFormat() {
-            var _this6 = this;
-
-            var metas = [];
-
-            var _loop = function _loop(i) {
-                _this6.table.getCellMetaAtRow(i).forEach(function (v, col) {
-                    if (v.className) {
-                        metas.push({ row: i, col: col, meta: { className: v.className } });
-                    }
-                });
-            };
-
+            var cell = [];
             for (var i = 0; i < this.originData.length; i++) {
-                _loop(i);
+                var meta = this.table.getCellMetaAtRow(i);
+                if (meta) {
+                    meta.forEach(function (v) {
+                        if (v.className) {
+                            cell.push({ row: v.row, col: v.col, className: v.className.trim() });
+                        }
+                    });
+                }
             }
+            var tds = [].concat(_toConsumableArray(this.dom.querySelectorAll('[rowspan][colspan]')));
+            var merges = tds.map(function (td) {
+                return {
+                    row: parseInt(td.getAttribute('row')),
+                    col: parseInt(td.getAttribute('col')),
+                    rowspan: parseInt(td.getAttribute('rowspan')),
+                    colspan: parseInt(td.getAttribute('colspan'))
+                };
+            });
             var data = {
                 data: this.originData,
-                mergeCells: this.mergeCells,
-                metas: metas
+                mergeCells: merges,
+                cell: cell
             };
             return data;
         }
@@ -556,6 +626,18 @@ function getCellName(row, col) {
 
 function isObject(data) {
     return data && (typeof data === 'undefined' ? 'undefined' : _typeof(data)) === 'object' && data + '' === '[object Object]';
+}
+
+function writeColorClass(colors) {
+    var style = '';
+    colors.forEach(function (color) {
+        style += '.bgcolor-' + color + ' {background-color: ' + color + ' !important;} \n.color-' + color + ' {color: ' + color + ' !important;}\n';
+    });
+    var dom = document.createElement('style');
+    dom.setAttribute("type", "text/css");
+    dom.innerHTML = style;
+    console.log('writeStyle:', style);
+    document.querySelector('head').appendChild(dom);
 }
 
 module.exports = TableEditor;

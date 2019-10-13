@@ -115,6 +115,10 @@ hot.on('update', function(data) {
 执行`npm run dev`
 
 ## 版本
+* v1.0.6
+    - 普通公式计算修复
+    - 增加DateToNumber和NumberToDate函数，方便时间计算
+    - 公式递归报错
 * v1.0.5
     - 表格初始化时包含合并单元格和对齐方式
 * v1.0.4
