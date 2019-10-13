@@ -21,6 +21,14 @@ const colors = [
 ];
 
 const menu = {
+    date: {
+        name: '当前时间',
+        callback: function(key, options) {
+            let selected = options[0].start;
+            this.setDataAtCell(selected.row, selected.col, utils.formatDateTime());
+            console.log('当前时间:', selected);
+        }
+    },
     row_above: {
         name: '上面添加行'
     },
@@ -70,7 +78,7 @@ const menu = {
     hsep5: '---------',
     // commentsAddEdit: {name: '编辑注释'},
     // commentsRemove: {name: '移除注释'},
-    "bgcolor": {
+    bgcolor: {
         name: '背景色',
         submenu: {
             items: colors.map(v => {
@@ -83,7 +91,7 @@ const menu = {
             })
         }
     },
-    "color": {
+    color: {
         name: '文字颜色',
         submenu: {
             items: colors.map(v => {
