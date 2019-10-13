@@ -12,6 +12,9 @@ var data = [
     ['不存在的属性', '=B4.notExist'],
     ['公式套公式', '=B5 + 10', {$prop: 'name'}],
     ['公式SUM', '=SUM(B2:C2)'],
+    ['时间转换', '2012-12-12', '=DateToNumber(B12)'],
+    ['时间差', '2012-12-13', '=DateToNumber(B13) - DateToNumber(B12)'],
+    ['数字转时间', '2012-12-13', '=NumberToDate(C12)'],
     ['对象编辑', {prop: 'name', value: 1, copyable: false}],
     ['禁止编辑', {prop: 'name', value: '12', readOnly: true}],
     ['禁止复制', {prop: 'name', value: '12', copyable: false}],
@@ -22,7 +25,7 @@ var container = document.getElementById('table')
 var options = {
     dom: container,
     data: data,
-    disabled: true,
+    disabled: false,
     // 属性别名
     propAlias: {
         'value': '值'

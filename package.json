@@ -34,8 +34,8 @@
     "webpack-dev-server": "^2.7.1"
   },
   "dependencies": {
+    "eslint": "^4.19.1",
     "handsontable": "^0.38.1",
-    "hot-formula-parser": "^2.3.3",
-    "eslint": "^4.19.1"
+    "hot-formula-parser": "^3.0.1"
   }
 }

@@ -82,7 +82,7 @@ const menu = {
 }
 
 function onClickMenu(key, selection) {
-    console.error(key, selection);
+    console.log('单元格颜色', key, selection)
     if (!selection || !selection[0] || !selection[0].start) {
         console.error('未知动作', key, selection);
     }
@@ -90,7 +90,7 @@ function onClickMenu(key, selection) {
     let newClassName = key.replace(':', '-');
     let start = selection[0].start;
     let end = selection[0].end;
-    let reg = new RegExp('\\b' + classPre + '-\w+\\b', 'g');
+    let reg = new RegExp('\\b' + classPre + '-\\w+\\b', 'g');
     for(let row = start.row; row <= end.row; row ++) {
         for(let col = start.col; col <= end.col; col ++) {
             let meta = this.getCellMeta(row, col);
@@ -135,6 +135,7 @@ class TableEditor extends EventEmitter {
         this.formulaParser = null // 公式计算实例
         this.table = null // hansontable编辑实例
         this.mergeCells = options.mergeCells || data.mergeCells || []
+        this.parserIndexes = {}; // 避免重复计算相同内容
         options.metas = options.metas || data.metas || []
         if (options.metas && !options.cell) {
             options.cell = options.metas.map(v => {
@@ -191,20 +192,51 @@ class TableEditor extends EventEmitter {
     createFormulaParser() {
         var parser = new FormulaParser()
         // 计算数据
-        parser.on('callVariable', (name, done) => {
-            console.log('callVariable:', arguments)
-            done(0)
+        // parser.on('callVariable', (name, done) => {
+        //     console.log('callVariable:', arguments)
+        //     done(0)
+        // });
+        parser.setFunction('DateToNumber', function(params) {
+            // console.log('DateToNumber:', params);
+            try {
+                let date = new Date(params[0]);
+                return date.getTime() / 1000;
+            }
+            catch(err) {
+                console.error('非法时间：', params[0], err);
+            }
+        });
+        parser.setFunction('NumberToDate', function(params) {
+            // console.log('NumberToDate:', params);
+            try {
+                let date = new Date(parseFloat(params[0]) * 1000);
+                return formatDateTime(date);
+            }
+            catch(err) {
+                console.error('非法数字时间：', params[0], err);
+            }
         });
 
-        parser.on('callFunction', (name, params, done) => {
-            console.log('callFunction:', arguments)
-            done(0)
-        });
+        // parser.on('callFunction', (name, params, done) => {
+        //     console.log('callFunction:', name, params);           
+        //     // done(0)
+        // });
 
         parser.on('callCellValue', (cellCoord, done) => {
             let row = this.originData[cellCoord.row.index]
             let data = row ? row[cellCoord.column.index] : null
             // console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, arguments)
+            let indexes = cellCoord.row.index + '_' + cellCoord.column.index;
+            this.parserIndexes[indexes] = this.parserIndexes[indexes] || 0;
+            this.parserIndexes[indexes] += 1;
+            // if (this.parserIndexes[indexes] > 1000) {
+            //     let message = '计算公式存在循环'
+            //         + (cellCoord.row.index + 1) + '行'
+            //         + (cellCoord.column.index + 1) + '列';
+            //     console.error(message);
+            //     throw new Error(message);
+            // }
+            
             if (data && data[0] === '=') {
                 let result = this.parser(data.substr(1))
                 if (!result.error) {
@@ -420,6 +452,9 @@ class TableEditor extends EventEmitter {
         }
         else if (data && data[0] === '=') {
             let result = this.parser(data.substr(1))
+            if (result.error) {
+                console.error('formula-error:', data.substr(1), result.error, result);
+            }
             className = result.error ? 'error' : 'formula'
             showValue = result.error ? data : result.result
             // console.log('parser:', data, result)
@@ -474,6 +509,7 @@ class TableEditor extends EventEmitter {
         }
 
         // 使用公式计算出结果
+        // console.log('计算公式：', formula);
         return this.formulaParser.parse(formula)
     }
     // 取得编辑数据
@@ -510,6 +546,14 @@ class TableEditor extends EventEmitter {
         }
         return data;
     }
+    // 取得选择的单元格
+    getSelected() {
+        let selected = this.table.getSelected();
+        if (selected) {
+            return selected[0];
+        }
+        return null;
+    }
     // 取得单元格原始数据
     getCellOrigin(row, col) {
         return this.originData[row] ? this.originData[row][col] : null
@@ -528,6 +572,9 @@ class TableEditor extends EventEmitter {
             return this.JSONParse(data)
         }
         return data
+    }
+    dateTime(date) {
+        return formatDateTime(date);
     }
 }
 
@@ -574,5 +621,21 @@ function writeColorClass(colors) {
     console.log('writeStyle:', style);
     document.querySelector('head').appendChild(dom);
 }
+
+function formatDateTime(date) {
+    date = date || new Date();
+    var y = date.getFullYear();
+    var m = date.getMonth() + 1
+    m = m < 10 ? ('0' + m) : m;  
+    var d = date.getDate();
+    d = d < 10 ? ('0' + d) : d;  
+    var h = date.getHours(); 
+    h = h < 10 ? ('0' + h) : h; 
+    var minute = date.getMinutes();
+    minute = minute < 10 ? ('0' + minute) : minute;
+    var second = date.getSeconds();
+    second = second < 10 ? ('0' + second) : second; 
+    return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second;  
+};  
 
 module.exports = TableEditor
