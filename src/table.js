@@ -3,8 +3,9 @@
  */
 const EventEmitter = require('eventemitter3');
 const Handsontable = require('handsontable/dist/handsontable.full.min.js')
-const FormulaParser = require('hot-formula-parser').Parser
+const FormulaParser = require('./formula');
 const ObjectEditor = require('./object_editor');
+const utils = require('./utils');
 
 const colors = [
     'red',
@@ -20,17 +21,33 @@ const colors = [
 ];
 
 const menu = {
-    row_above: {name: '上面添加行'},
-    row_below: {name: '下面添加行'},
+    row_above: {
+        name: '上面添加行'
+    },
+    row_below: {
+        name: '下面添加行'
+    },
     hsep1: '---------',
-    col_left: {name: '左侧添加列'},
-    col_right: {name: '右侧添加列'},
+    col_left: {
+        name: '左侧添加列'
+    },
+    col_right: {
+        name: '右侧添加列'
+    },
     hsep2: '---------',
-    remove_row: {name: '删除行'},
-    remove_col: {name: '删除列'},
+    remove_row: {
+        name: '删除行'
+    },
+    remove_col: {
+        name: '删除列'
+    },
     hsep3: '---------',
-    undo: {name: '撤销'},
-    redo: {name: '重做'},
+    undo: {
+        name: '撤销'
+    },
+    redo: {
+        name: '重做'
+    },
     hsep4: '---------',
     // make_read_only: {name: '只读'},
     alignment: {
@@ -53,7 +70,7 @@ const menu = {
     hsep5: '---------',
     // commentsAddEdit: {name: '编辑注释'},
     // commentsRemove: {name: '移除注释'},
-    "bgcolor": { 
+    "bgcolor": {
         name: '背景色',
         submenu: {
             items: colors.map(v => {
@@ -91,12 +108,14 @@ function onClickMenu(key, selection) {
     let start = selection[0].start;
     let end = selection[0].end;
     let reg = new RegExp('\\b' + classPre + '-\\w+\\b', 'g');
-    for(let row = start.row; row <= end.row; row ++) {
-        for(let col = start.col; col <= end.col; col ++) {
+    for (let row = start.row; row <= end.row; row++) {
+        for (let col = start.col; col <= end.col; col++) {
             let meta = this.getCellMeta(row, col);
             let className = meta.className || '';
             className = className.replace(reg, '').trim() + ' ' + newClassName;
-            this.setCellMetaObject(row, col, {className})
+            this.setCellMetaObject(row, col, {
+                className
+            })
         }
     }
     this.render();
@@ -132,10 +151,8 @@ class TableEditor extends EventEmitter {
         this.ready = false;
         this.options = options
         this.dom = options.dom
-        this.formulaParser = null // 公式计算实例
         this.table = null // hansontable编辑实例
         this.mergeCells = options.mergeCells || data.mergeCells || []
-        this.parserIndexes = {}; // 避免重复计算相同内容
         options.metas = options.metas || data.metas || []
         if (options.metas && !options.cell) {
             options.cell = options.metas.map(v => {
@@ -147,7 +164,8 @@ class TableEditor extends EventEmitter {
             })
         }
         this.errorFields = []
-        this.createFormulaParser()
+        // 公式计算实例
+        this.formulaParser = new FormulaParser(this);
 
         // 转换object对象为字符串
         if (this.originData && this.originData.length > 0) {
@@ -166,7 +184,7 @@ class TableEditor extends EventEmitter {
         if (this.options.propAlias) {
             let alias = this.options.propAlias
             this.alias = {}
-            for(let attr in alias) {
+            for (let attr in alias) {
                 this.alias[alias[attr]] = attr
             }
         }
@@ -178,99 +196,16 @@ class TableEditor extends EventEmitter {
         let target = e.target || {}
         if (target.tagName === 'TD') {
             let col = target.cellIndex - 1
-            let row = target.parentElement.rowIndex -1
+            let row = target.parentElement.rowIndex - 1
             let data = this.originData[row] ? this.originData[row][col] : null
             this.emit('dblclick', row, col, data)
             if (data && data[0] === '{') {
-                let obj = this.JSONParse(data);
+                let obj = utils.JSONParse(data);
                 if (typeof obj !== 'string') {
                     this.emit('dblclick-object', row, col, obj)
                 }
             }
         }
-    }
-    createFormulaParser() {
-        var parser = new FormulaParser()
-        // 计算数据
-        // parser.on('callVariable', (name, done) => {
-        //     console.log('callVariable:', arguments)
-        //     done(0)
-        // });
-        parser.setFunction('DateToNumber', function(params) {
-            // console.log('DateToNumber:', params);
-            try {
-                let date = new Date(params[0]);
-                return date.getTime() / 1000;
-            }
-            catch(err) {
-                console.error('非法时间：', params[0], err);
-            }
-        });
-        parser.setFunction('NumberToDate', function(params) {
-            // console.log('NumberToDate:', params);
-            try {
-                let date = new Date(parseFloat(params[0]) * 1000);
-                return formatDateTime(date);
-            }
-            catch(err) {
-                console.error('非法数字时间：', params[0], err);
-            }
-        });
-
-        // parser.on('callFunction', (name, params, done) => {
-        //     console.log('callFunction:', name, params);           
-        //     // done(0)
-        // });
-
-        parser.on('callCellValue', (cellCoord, done) => {
-            let row = this.originData[cellCoord.row.index]
-            let data = row ? row[cellCoord.column.index] : null
-            // console.log('callCellValue:', cellCoord.row.index, cellCoord.column.index, data, arguments)
-            let indexes = cellCoord.row.index + '_' + cellCoord.column.index;
-            this.parserIndexes[indexes] = this.parserIndexes[indexes] || 0;
-            this.parserIndexes[indexes] += 1;
-            // if (this.parserIndexes[indexes] > 1000) {
-            //     let message = '计算公式存在循环'
-            //         + (cellCoord.row.index + 1) + '行'
-            //         + (cellCoord.column.index + 1) + '列';
-            //     console.error(message);
-            //     throw new Error(message);
-            // }
-            
-            if (data && data[0] === '=') {
-                let result = this.parser(data.substr(1))
-                if (!result.error) {
-                    return done(result.result)
-                }
-                else {
-                    console.error('FormulaParserError:', result)
-                }
-            }
-            else if (data && data[0] === '{') {
-                return done(this.JSONParse(data))
-            }
-            done(data)
-        });
-
-        parser.on('callRangeValue', (startCellCoord, endCellCoord, done) => {
-            console.log('callRangeValue:', arguments)
-            var data = this.originData;
-            var fragment = [];
-            for (var row = startCellCoord.row.index; row <= endCellCoord.row.index; row++) {
-                var rowData = data[row];
-                var colFragment = [];
-            
-                for (var col = startCellCoord.column.index; col <= endCellCoord.column.index; col++) {
-                    colFragment.push(rowData[col]);
-                }
-                fragment.push(colFragment);
-            }
-        
-            if (fragment) {
-                done(fragment);
-            }
-        });
-        this.formulaParser = parser;
     }
     createTable() {
         this.table = new Handsontable(this.dom, this.getTableConfig())
@@ -286,7 +221,7 @@ class TableEditor extends EventEmitter {
             // 右键菜单
             contextMenu: this.options.disabled ? false : {
                 items: menu
-            }, 
+            },
             manualRowResize: this.options.disabled ? false : true, // 调整行高度
             manualColumnResize: this.options.disabled ? false : true, // 调整列宽度
             cells: this.getCellProp.bind(me), // this.cells,
@@ -323,7 +258,9 @@ class TableEditor extends EventEmitter {
             },
             minSpareRows: 1
         }
-        let config = Object.assign({}, defaultConfig, this.options.config, {data: this.originData});
+        let config = Object.assign({}, defaultConfig, this.options.config, {
+            data: this.originData
+        });
         return config;
     }
     updateSettings() {
@@ -351,7 +288,7 @@ class TableEditor extends EventEmitter {
         console.log('data', this.originData)
     }
     stringify(data) {
-        switch(typeof data) {
+        switch (typeof data) {
             case 'string':
             case 'number':
                 return data;
@@ -388,11 +325,10 @@ class TableEditor extends EventEmitter {
         let aliasShow = []
         let show = []
         let alias = this.options.propAlias
-        for(let attr in obj) {
+        for (let attr in obj) {
             if (alias && alias[attr]) {
                 aliasShow.push(alias[attr] + '(' + attr + '): ' + obj[attr])
-            }
-            else if (!this.options.commentNeedAlias) {
+            } else if (!this.options.commentNeedAlias) {
                 show.push(attr + ': ' + obj[attr])
             }
         }
@@ -409,18 +345,21 @@ class TableEditor extends EventEmitter {
             cellMeta.editor = false
         }
         let data = this.originData[row] ? this.originData[row][col] : null
-        if(data && data[0] === '{') {
-            let d = this.JSONParse(data)
+        if (data && data[0] === '{') {
+            let d = utils.JSONParse(data)
             if (typeof d === 'object') {
-                cellMeta.comment = {value: getCellName(row, col) + '\n' + this.getObjectComment(d)}
+                cellMeta.comment = {
+                    value: getCellName(row, col) + '\n' + this.getObjectComment(d)
+                }
                 cellMeta.editor = ObjectEditor
                 if (d.readOnly || d.disabled) {
                     cellMeta.readOnly = true;
                 }
             }
-        }
-        else if (data && data[0] === '=') {
-            cellMeta.comment = {value: data}
+        } else if (data && data[0] === '=') {
+            cellMeta.comment = {
+                value: data
+            }
         }
         return cellMeta
     }
@@ -432,26 +371,23 @@ class TableEditor extends EventEmitter {
         let showValue = null
         td.setAttribute('row', row);
         td.setAttribute('col', col);
-        if(data && data[0] === '{') {
-            let d = this.JSONParse(data)
+        if (data && data[0] === '{') {
+            let d = utils.JSONParse(data)
             if (typeof d === 'string') {
                 showValue = d
-            }
-            else {
+            } else {
                 className = 'object'
                 if (d.className) {
                     className += ' ' + d.className;
                 }
                 if (this.options.objectRender) {
                     showValue = this.options.objectRender(d, row, col);
-                }
-                else {
-                    showValue = [d.name, d.value].filter(v => typeof v !== 'undefined').join(':') 
+                } else {
+                    showValue = [d.name, d.value].filter(v => typeof v !== 'undefined').join(':')
                 }
             }
-        }
-        else if (data && data[0] === '=') {
-            let result = this.parser(data.substr(1))
+        } else if (data && data[0] === '=') {
+            let result = this.formulaParser.parse(data.substr(1))
             if (result.error) {
                 console.error('formula-error:', data.substr(1), result.error, result);
             }
@@ -468,50 +404,6 @@ class TableEditor extends EventEmitter {
         }
         return td
     }
-    JSONParse(str) {
-        try {
-            return JSON.parse(str)
-        }
-        catch(err) {
-            console.error('JSON.parse Error', err, str)
-        }
-        return str
-    }
-    // 计算公式的值
-    parser(formula) {
-        let alias = this.alias
-        if (alias) {
-            formula = formula.replace(/[^\.\s\+\-\*\/\(\)]+/g, function(word) {
-                // console.log('word', word)
-                return alias[word] || word
-            })
-        }
-        try {
-            // console.log('formula:', formula)
-            // 转换对象数据属性，例如E2.value
-            formula = formula.replace(/([A-Z]\w*)(\d+)\.(\w+)/g, (all, col, row, attr) => {
-                col = getColByColName(col)
-                row = parseInt(row, 10) - 1
-                let rowData = this.originData[row]
-                if (rowData) {
-                    // console.log('rowData:', rowData)
-                    let data = rowData[col]
-                    if (data && data[0] === '{') {
-                        data = this.JSONParse(data)
-                    }
-                    return data[attr] || 0
-                }
-                return 0
-            })
-        }
-        catch(error) {
-            return {error}
-        }
-
-        // 使用公式计算出结果
-        // console.log('计算公式：', formula);
-        return this.formulaParser.parse(formula)
-    }
     // 取得编辑数据
     getData() {
         this.originData = this.table.getData();
@@ -520,12 +412,16 @@ class TableEditor extends EventEmitter {
     // 获取包含样式部分的数据
     getDataWithFormat() {
         let cell = []
-        for(let i = 0; i < this.originData.length; i++) {
+        for (let i = 0; i < this.originData.length; i++) {
             let meta = this.table.getCellMetaAtRow(i);
             if (meta) {
                 meta.forEach(v => {
                     if (v.className) {
-                        cell.push({row: v.row, col: v.col, className: v.className.trim()})
+                        cell.push({
+                            row: v.row,
+                            col: v.col,
+                            className: v.className.trim()
+                        })
                     }
                 })
             }
@@ -562,41 +458,24 @@ class TableEditor extends EventEmitter {
     getCellData(row, col) {
         let data = this.originData[row] ? this.originData[row][col] : null
         if (data && data[0] === '=') {
-            let result = this.parser(data.slice(1))
+            let result = this.formulaParser.parse(data.slice(1))
             if (!result.error) {
                 return result.result
             }
             return data
-        }
-        else if(data && data[0] === '{') {
-            return this.JSONParse(data)
+        } else if (data && data[0] === '{') {
+            return utils.JSONParse(data)
         }
         return data
     }
-    dateTime(date) {
-        return formatDateTime(date);
-    }
 }
 
-/**
- * 根据列名称取得是第几列
- * @param {*} name 列名称，例如'A', 'AB'
- */
-function getColByColName(name) {
-    let codeA = 'A'.charCodeAt(0) - 1
-    let value = 0
-    if (name.length === 1) {
-        return name.charCodeAt(0) - codeA - 1
-    }
-    let array = name.split('').reverse().forEach((char, index) => {
-        value += (char.charCodeAt(0) - codeA) * Math.pow(26, index)
-    })
-    return value - 1
-}
+
 const charArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
 function getCellName(row, col) {
     let colName = ''
-    while(col >= 26) {
+    while (col >= 26) {
         let number = col % 26
         colName = charArray[number] + colName
         col = parseInt((col - number) / 26, 10) - 1
@@ -622,20 +501,5 @@ function writeColorClass(colors) {
     document.querySelector('head').appendChild(dom);
 }
 
-function formatDateTime(date) {
-    date = date || new Date();
-    var y = date.getFullYear();
-    var m = date.getMonth() + 1
-    m = m < 10 ? ('0' + m) : m;  
-    var d = date.getDate();
-    d = d < 10 ? ('0' + d) : d;  
-    var h = date.getHours(); 
-    h = h < 10 ? ('0' + h) : h; 
-    var minute = date.getMinutes();
-    minute = minute < 10 ? ('0' + minute) : minute;
-    var second = date.getSeconds();
-    second = second < 10 ? ('0' + second) : second; 
-    return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second;  
-};  
 
 module.exports = TableEditor
