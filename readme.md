@@ -114,6 +114,12 @@ hot.on('update', function(data) {
 ## 开发说明
 执行`npm run dev`
 
+## 更新产出
+1. 执行`npm run webpack`生成github pages中使用的example示例页面
+2. 执行`npm run build`生成供外呼模块中引入的入口文件dist/table.js
+3. `git push`提交到github
+4. `npm publish`发版到npm
+
 ## 版本
 * v1.0.6
     - 普通公式计算修复

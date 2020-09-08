@@ -8,7 +8,7 @@
     "dev": "open index.html && webpack --watch",
     "webpack": "cross-env NODE_ENV=dev webpack",
     "publish": "npm run build && nrm use npm && npm publish",
-    "build": "lessc src/style.less dist/style.css && babel src/ --out-dir dist/"
+    "build": "lessc src/style.less dist/style.css && babel src/ --out-dir dist/ --ignore example"
   },
   "author": "laomu1988",
   "license": "MIT",
